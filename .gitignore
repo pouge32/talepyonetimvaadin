@@ -1,14 +1,13 @@
-/target/
-.idea/
-.vscode/
-.settings
-.project
-.classpath
+# Maven / Java
+target/
+*.class
 
-*.iml
-.DS_Store
-
-# The following files are generated/updated by vaadin-maven-plugin
+# Frontend / Vaadin
 node_modules/
-src/main/frontend/generated/
-vite.generated.ts
+package-lock.json
+frontend/generated/
+
+# IDE
+.idea/
+*.iml
+.vscode/

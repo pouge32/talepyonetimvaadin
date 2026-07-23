@@ -2,7 +2,6 @@ package com.example.base.ui;
 
 import com.example.base.service.RequestService;
 import com.vaadin.flow.component.button.Button;
-import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -30,7 +29,6 @@ public class TalepAcma extends VerticalLayout {
         FormLayout formLayout = new FormLayout();
         formLayout.add(title, description);
         
-        submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         
         setupBinder();
 
@@ -56,14 +54,12 @@ public class TalepAcma extends VerticalLayout {
                 );
 
                 Notification success = Notification.show("Talebiniz başarıyla oluşturuldu!", 3000, Notification.Position.TOP_CENTER);
-                success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
                 currentDto = new RequestFormDto();
                 binder.setBean(currentDto);
 
             } catch (Exception e) {
                 Notification error = Notification.show("Hata oluştu: " + e.getMessage(), 4000, Notification.Position.TOP_CENTER);
-                error.addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         } else {
             Notification.show("Lütfen gerekli alanları doldurun.", 3000, Notification.Position.MIDDLE);
