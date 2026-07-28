@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -21,8 +22,8 @@ import jakarta.persistence.Table;
 public class RequestEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "request_id")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "req_seq_gen")
+    @SequenceGenerator(name = "req_seq_gen", sequenceName = "request_sequence", allocationSize = 1)
     private Integer requestId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

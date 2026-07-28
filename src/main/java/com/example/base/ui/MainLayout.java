@@ -1,74 +1,132 @@
 package com.example.base.ui;
 
-import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.Unit;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.Optional;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import com.example.base.entity.UserEntity;
+import com.example.base.repository.UserRepository;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
-import com.vaadin.flow.component.avatar.AvatarVariant;
-import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
-import com.vaadin.flow.component.icon.SvgIcon;
-import com.vaadin.flow.component.orderedlayout.*;
+import com.vaadin.flow.component.contextmenu.MenuItem;
+import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.icon.VaadinIcon;
+import com.vaadin.flow.component.menubar.MenuBar;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
-import com.vaadin.flow.router.Layout;
-import com.vaadin.flow.server.menu.MenuConfiguration;
-import com.vaadin.flow.server.menu.MenuEntry;
+import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 
-@Layout
-public final class MainLayout extends AppLayout {
+import jakarta.annotation.security.PermitAll;
 
-    MainLayout() {
-        setPrimarySection(Section.DRAWER);
-        addToDrawer(createApplicationHeader(), createApplicationDrawer(), createApplicationFooter());
+@PermitAll
+public class MainLayout extends AppLayout {
+
+    private final transient AuthenticationContext authContext;
+    private final UserRepository userRepository;
+
+    public MainLayout(AuthenticationContext authContext, UserRepository userRepository) {
+        this.authContext = authContext;
+        this.userRepository = userRepository;
+        createHeader();
+        createDrawer();
     }
 
-    private Component createApplicationHeader() {
-        // TODO Replace with real application logo and name
-        var appLogo = new Avatar("My Application");
-        appLogo.addClassName("app-logo");
-        appLogo.addThemeVariants(AvatarVariant.AURA_FILLED, AvatarVariant.XSMALL);
+    private void createHeader() {
+        DrawerToggle toggle = new DrawerToggle();
 
-        var appName = new Span("My Application");
-        appName.addClassName("app-name");
+        H1 title = new H1("Talep Yönetim Sistemi");
+        title.getStyle().set("font-size", "var(--lumo-font-size-l)").set("margin", "0");
 
-        var header = new HorizontalLayout(appLogo, appName);
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-        header.setPadding(true);
-        return header;
-    }
+        MenuBar userMenu = new MenuBar();
+        userMenu.setOpenOnHover(false);
 
-    private Component createApplicationDrawer() {
-        var scroller = new Scroller(createSideNav());
-        scroller.addThemeVariants(ScrollerVariant.OVERFLOW_INDICATORS);
-        return scroller;
-    }
+        String email = authContext.getAuthenticatedUser(UserDetails.class)
+                .map(UserDetails::getUsername)
+                .orElse("Anonim");
 
-    private Component createApplicationFooter() {
-        var footer = new VerticalLayout(new Span("Made with ❤️ with Vaadin"));
-        footer.setAlignItems(FlexComponent.Alignment.CENTER);
-        footer.addClassName("app-footer");
-        return footer;
-    }
+        Avatar avatar = new Avatar();
+        
+        Optional<UserEntity> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isPresent()) {
+            UserEntity user = userOpt.get();
+            avatar.setName(user.getNameSurname());
 
-    private SideNav createSideNav() {
-        var nav = new SideNav();
-        nav.setMinWidth(200, Unit.PIXELS);
-        MenuConfiguration.getMenuEntries().forEach(entry -> nav.addItem(createSideNavItem(entry)));
-        return nav;
-    }
-
-    private SideNavItem createSideNavItem(MenuEntry menuEntry) {
-        if (menuEntry.icon() != null) {
-            Component icon = null;
-            if (menuEntry.icon().contains(".svg")) {
-                icon = new SvgIcon(menuEntry.icon());
-            } else {
-                icon = new Icon(menuEntry.icon());
+            String photoUrl = user.getProfilePhotoUrl();
+            if (photoUrl != null && !photoUrl.isEmpty()) {
+                String filePath = photoUrl.startsWith("/") ? photoUrl.substring(1) : photoUrl;
+                File imgFile = new File(filePath);
+                
+                if (imgFile.exists()) {
+                    StreamResource resource = new StreamResource(imgFile.getName(), () -> {
+                        try {
+                            return new FileInputStream(imgFile);
+                        } catch (FileNotFoundException e) {
+                            return new ByteArrayInputStream(new byte[0]);
+                        }
+                    });
+                    avatar.setImageResource(resource);
+                }
             }
-            return new SideNavItem(menuEntry.title(), menuEntry.menuClass(), icon);
         } else {
-            return new SideNavItem(menuEntry.title(), menuEntry.menuClass());
+            avatar.setName(email);
         }
+
+        MenuItem avatarItem = userMenu.addItem(avatar);
+
+        avatarItem.getSubMenu().addItem("Profil Ayarları", e -> {
+            getUI().ifPresent(ui -> ui.navigate(ProfilView.class));
+        });
+        
+        avatarItem.getSubMenu().addItem("Çıkış Yap", e -> authContext.logout());
+
+        HorizontalLayout header = new HorizontalLayout(toggle, title, userMenu);
+        header.setDefaultVerticalComponentAlignment(FlexComponent.Alignment.CENTER);
+        header.expand(title);
+        header.setWidthFull();
+        header.getStyle().set("padding-right", "15px");
+
+        addToNavbar(header);
+    }
+
+    private void createDrawer() {
+        SideNav nav = new SideNav();
+        
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        
+        if (auth != null) {
+            
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                nav.addItem(new SideNavItem("Yeni Talep Oluştur", TalepAcma.class, VaadinIcon.PLUS_CIRCLE.create()));
+                nav.addItem(new SideNavItem("Taleplerim", TaleplerimView.class, VaadinIcon.LIST.create())); 
+                nav.addItem(new SideNavItem("Profil Ayarları", ProfilView.class, VaadinIcon.USER.create()));
+            }
+
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PO"))) {
+                nav.addItem(new SideNavItem("Bekleyen Talepler", TalepDegerlendirme.class, VaadinIcon.LIST_SELECT.create()));
+            }
+
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_HELPDESK"))) {
+                nav.addItem(new SideNavItem("Gelen Talepler (Ön İnceleme)", HomeView.class, VaadinIcon.INBOX.create())); 
+                nav.addItem(new SideNavItem("Müşteri Kayıt Onayları", HomeView.class, VaadinIcon.USER_CHECK.create()));
+            }
+
+            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                nav.addItem(new SideNavItem("Kullanıcı Yönetimi", HomeView.class, VaadinIcon.USERS.create())); 
+                nav.addItem(new SideNavItem("Sistem Logları", HomeView.class, VaadinIcon.CHART_LINE.create()));
+                nav.addItem(new SideNavItem("Dashboard", DashboardView.class, VaadinIcon.LIST_SELECT.create()));
+            }
+        }
+
+        addToDrawer(nav);
     }
 }

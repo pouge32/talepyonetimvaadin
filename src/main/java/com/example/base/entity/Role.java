@@ -1,10 +1,9 @@
 package com.example.base.entity;
 
-
 public enum Role {
     CUSTOMER,
-    PRODUCT_OWNER,
-    DEVELOPER,
+    PO,
     HELPDESK,
-    ADMIN
+    ADMIN,
+    PRODUCT_OWNER
 }

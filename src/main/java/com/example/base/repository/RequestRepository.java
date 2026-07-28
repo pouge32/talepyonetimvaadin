@@ -16,4 +16,6 @@ public interface RequestRepository extends JpaRepository<RequestEntity, Integer>
     List<RequestEntity> findByStatus(String status);
 
     List<RequestEntity> findByStatusAndCreatedAtBefore(String status, LocalDateTime threshold);
+
+    long countByStatus(String status);
 }

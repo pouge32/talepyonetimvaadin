@@ -14,4 +14,7 @@ public interface WorkflowRepository extends JpaRepository<WorkflowEntity, Intege
     List<WorkflowEntity> findByDeveloper_UserId(Integer developerId);
 
     List<WorkflowEntity> findByWorkflowStatus(String workflowStatus);
+
+    long countByWorkflowStatus(String workflowStatus);
+
 }

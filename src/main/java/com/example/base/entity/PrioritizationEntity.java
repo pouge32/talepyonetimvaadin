@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -16,8 +17,8 @@ import jakarta.persistence.Table;
 public class PrioritizationEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "priority_id")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "prio_seq_gen")
+    @SequenceGenerator(name = "prio_seq_gen", sequenceName = "prioritization_sequence", allocationSize = 1)
     private Integer priorityId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

@@ -3,31 +3,48 @@ package com.example.base.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.base.entity.PrioritizationEntity;
 import com.example.base.entity.RequestEntity;
 import com.example.base.entity.UserEntity;
+import com.example.base.entity.WorkflowEntity;
 import com.example.base.repository.PrioritizationRepository;
 import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
+import com.example.base.repository.WorkflowRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class RequestService {
+    
 
     private final RequestRepository requestRepository;
     private final PrioritizationRepository prioritizationRepository;
     private final UserRepository userRepository;
+    private final WorkflowRepository workflowRepository;
+    public List<RequestEntity> getMyRequestsForCurrentUser() {
+    String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+    UserEntity customer = userRepository.findByEmail(email)
+            .orElseThrow(() -> new EntityNotFoundException("Kullanıcı bulunamadı: " + email));
+
+    return requestRepository.findByCustomer_UserId(customer.getUserId());
+    }
 
     public RequestService(RequestRepository requestRepository,
                            PrioritizationRepository prioritizationRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           WorkflowRepository workflowRepository
+                        ) {
         this.requestRepository = requestRepository;
         this.prioritizationRepository = prioritizationRepository;
         this.userRepository = userRepository;
+        this.workflowRepository = workflowRepository;
+        
     }
 
     @Transactional
@@ -55,24 +72,32 @@ public class RequestService {
 
     
     @Transactional
-    public PrioritizationEntity prioritizeRequest(Integer requestId, int urgency, int impact,
-                                                   int effort, boolean securityOverride) {
-        RequestEntity request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new EntityNotFoundException("Talep bulunamadı: " + requestId));
+public PrioritizationEntity prioritizeRequest(Integer requestId, int urgency, int impact) {
+    RequestEntity request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new EntityNotFoundException("Talep bulunamadı: " + requestId));
 
-        PrioritizationEntity prioritization = prioritizationRepository
-                .findByRequest_RequestId(requestId)
-                .orElseGet(PrioritizationEntity::new);
+    PrioritizationEntity prioritization = prioritizationRepository
+            .findByRequest_RequestId(requestId)
+            .orElseGet(PrioritizationEntity::new);
 
-        prioritization.setRequest(request);
-        prioritization.setUrgency(urgency);
-        prioritization.setImpact(impact);
-        prioritization.setEffort(effort);
-        prioritization.setIsSecurityOverride(securityOverride ? 1 : 0);
-        prioritization.setPriorityScore(calculateScore(urgency, impact, securityOverride));
+    prioritization.setRequest(request);
+    prioritization.setUrgency(urgency);
+    prioritization.setImpact(impact);
+    prioritization.setEffort(1); 
+    prioritization.setIsSecurityOverride(0);
 
-        return prioritizationRepository.save(prioritization);
+    int score = calculateScore(urgency, impact, false);
+    prioritization.setPriorityScore(score);
+
+    if (score >= 8) {
+        request.setStatus("Onaylandı");
+    } else {
+        request.setStatus("İncelemede");
     }
+    requestRepository.save(request);
+
+    return prioritizationRepository.save(prioritization);
+}
 
     
     @Transactional
@@ -108,4 +133,32 @@ public class RequestService {
         if (score >= 3) return "ORTA";
         return "DÜŞÜK";
     }
+    public List<RequestEntity> getNewRequests() {
+        return requestRepository.findByStatus("NEW");
+    }
+    public Integer getFirstCustomerId() {
+        return userRepository.findAll().stream()
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Veritabanında kullanıcı bulunamadı! Lütfen PL/SQL'den bir kullanıcı ekleyin."))
+                .getUserId();
+    }
+    public String getRequestPriority(Integer requestId) {
+        return prioritizationRepository.findByRequest_RequestId(requestId)
+                .map(p -> p.getPriorityScore() + " - " + getPriorityLabel(p.getPriorityScore()))
+                .orElse("Puan Bekliyor"); 
+    }
+    @Transactional
+public WorkflowEntity goreveDonustur(RequestEntity talep) {
+    WorkflowEntity workflow = new WorkflowEntity();
+    workflow.setRequest(talep);
+    workflow.setWorkflowStatus("BACKLOG");
+    workflow.setAssignedAt(LocalDateTime.now());
+
+    WorkflowEntity saved = workflowRepository.save(workflow);
+
+    talep.setStatus("İş Akışına Dönüştü");
+    requestRepository.save(talep);
+
+    return saved;
+}
 }

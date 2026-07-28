@@ -1,6 +1,7 @@
-import '@vaadin/app-layout/src/vaadin-app-layout.js';
 import '@vaadin/vertical-layout/src/vaadin-vertical-layout.js';
+import '@vaadin/app-layout/src/vaadin-app-layout.js';
 import '@vaadin/field-highlighter/src/vaadin-field-highlighter.js';
+import '@vaadin-component-factory/vcf-date-range-picker/vcf-date-range-picker.js';
 import '@vaadin/common-frontend/ConnectionIndicator.js';
 import '@vaadin/accordion/src/vaadin-accordion.js';
 import '@vaadin/details/src/vaadin-details.js';
@@ -95,6 +96,8 @@ import '@vaadin/virtual-list/src/vaadin-virtual-list.js';
 import 'Frontend/generated/jar-resources/virtualListConnector.js';
 import '@vaadin/vaadin-lumo-styles/vaadin-iconset.js';
 import 'Frontend/generated/jar-resources/copilot-version.js';
+import 'Frontend/generated/jar-resources/date-fns-limited.min.js';
+import 'Frontend/generated/jar-resources/enhancedDateRangePickerConnector.js';
 const loadOnDemand = (key) => { return Promise.resolve(0); }
 window.Vaadin = window.Vaadin || {};
 window.Vaadin.Flow = window.Vaadin.Flow || {};

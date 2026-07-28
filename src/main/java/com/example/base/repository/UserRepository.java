@@ -16,6 +16,5 @@ public interface UserRepository extends JpaRepository<UserEntity, Integer> {
 
     List<UserEntity> findByRole(Role role);
 
-    // Helpdesk'in onay bekleyen kayıtları listelemesi için (registration_status = 'PENDING').
     List<UserEntity> findByRegistrationStatus(String registrationStatus);
 }

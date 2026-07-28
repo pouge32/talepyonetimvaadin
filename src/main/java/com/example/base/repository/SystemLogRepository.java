@@ -1,13 +1,13 @@
 package com.example.base.repository;
 
-import com.example.base.entity.SystemLogEntity;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.List;
+import com.example.base.entity.SystemLogEntity;
 
 public interface SystemLogRepository extends JpaRepository<SystemLogEntity, Integer> {
 
-    // Admin panelinde logları en güncelden eskiye listelemek için.
     List<SystemLogEntity> findAllByOrderByCreatedAtDesc();
 
     List<SystemLogEntity> findByUser_UserId(Integer userId);

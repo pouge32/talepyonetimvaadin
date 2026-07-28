@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,7 +20,8 @@ import jakarta.persistence.Table;
 public class NotificationEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notif_seq_gen")
+    @SequenceGenerator(name = "notif_seq_gen", sequenceName = "notification_sequence", allocationSize = 1)
     @Column(name = "notification_id")
     private Integer notificationId;
 
@@ -43,14 +45,12 @@ public class NotificationEntity {
     public NotificationEntity() {
     }
 
-    public NotificationEntity(Integer notificationId, UserEntity user, String title, String content,
-                         Integer isRead, LocalDateTime createdAt) {
-        this.notificationId = notificationId;
+    public NotificationEntity(UserEntity user, String title, String content) {
         this.user = user;
         this.title = title;
         this.content = content;
-        this.isRead = isRead;
-        this.createdAt = createdAt;
+        this.isRead = 0;
+        this.createdAt = LocalDateTime.now();
     }
 
     public Integer getNotificationId() {

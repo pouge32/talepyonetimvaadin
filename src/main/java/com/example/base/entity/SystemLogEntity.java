@@ -23,7 +23,7 @@ public class SystemLogEntity {
     @Column(name = "log_id")
     private Integer logId;
 
-    @ManyToOne(fetch = FetchType.LAZY)//lazy sebebi:Log kayıtlarını çeker ama User objesinin yerini boş bir gölge obje (proxy) ile tutar.
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_log_user"))
     private UserEntity user;
 

@@ -10,6 +10,7 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
 
     List<NotificationEntity> findByUser_UserIdOrderByCreatedAtDesc(Integer userId);
 
-    // Pop-up'ta gösterilecek okunmamış bildirimler için (is_read = 0).
     List<NotificationEntity> findByUser_UserIdAndIsRead(Integer userId, Integer isRead);
+
+    List<NotificationEntity> findByUser_EmailAndIsReadOrderByCreatedAtDesc(String email, Integer isRead);
 }

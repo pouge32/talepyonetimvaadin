@@ -1,5 +1,6 @@
 package com.example.base.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,5 +11,9 @@ public interface PrioritizationRepository extends JpaRepository<PrioritizationEn
 
     Optional<PrioritizationEntity> findByRequest_RequestId(Integer requestId);
 
-    java.util.List<PrioritizationEntity> findAllByOrderByPriorityScoreDesc();
+    List<PrioritizationEntity> findAllByOrderByPriorityScoreDesc();
+
+    List<PrioritizationEntity> findTop5ByOrderByPriorityScoreDesc();
+
+    long countByUrgency(int urgency);
 }
