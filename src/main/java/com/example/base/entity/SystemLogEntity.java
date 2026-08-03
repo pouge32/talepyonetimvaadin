@@ -4,64 +4,34 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "xay_system_logs")
+@Table(name = "XAY_SYSTEM_LOGS")
 public class SystemLogEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "log_id")
-    private Integer logId;
+@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "log_seq")
+@SequenceGenerator(name = "log_seq", sequenceName = "XAY_SYSTEM_LOGS_SEQ", allocationSize = 1)
+@Column(name = "LOG_ID")
+private Long logId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", foreignKey = @ForeignKey(name = "fk_log_user"))
-    private UserEntity user;
-
-    @Column(name = "action", nullable = false, length = 100)
+    @Column(name = "ACTION", length = 1000)
     private String action;
 
-    @Lob
-    @Column(name = "details")
-    private String details;
+    @Column(name = "CREATED_AT")
+    private LocalDateTime createdAt;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    public SystemLogEntity() {
-    }
-
-    public SystemLogEntity(Integer logId, UserEntity user, String action, String details, LocalDateTime createdAt) {
-        this.logId = logId;
-        this.user = user;
-        this.action = action;
-        this.details = details;
-        this.createdAt = createdAt;
-    }
-
-    public Integer getLogId() {
+    public Long getLogId() {
         return logId;
     }
 
-    public void setLogId(Integer logId) {
+    public void setLogId(Long logId) {
         this.logId = logId;
-    }
-
-    public UserEntity getUser() {
-        return user;
-    }
-
-    public void setUser(UserEntity user) {
-        this.user = user;
     }
 
     public String getAction() {
@@ -69,15 +39,7 @@ public class SystemLogEntity {
     }
 
     public void setAction(String action) {
-        this.action = action;
-    }
-
-    public String getDetails() {
-        return details;
-    }
-
-    public void setDetails(String details) {
-        this.details = details;
+        this.action = action; 
     }
 
     public LocalDateTime getCreatedAt() {

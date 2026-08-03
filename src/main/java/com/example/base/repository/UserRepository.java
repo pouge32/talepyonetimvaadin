@@ -1,5 +1,6 @@
 package com.example.base.repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,4 +18,10 @@ public interface UserRepository extends JpaRepository<UserEntity, Integer> {
     List<UserEntity> findByRole(Role role);
 
     List<UserEntity> findByRegistrationStatus(String registrationStatus);
+
+    List<UserEntity> findByStatus(String status);
+
+    List<UserEntity> findByStatusAndCreatedAtBetween(String status, LocalDateTime start, LocalDateTime end);
+
+    long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
 }

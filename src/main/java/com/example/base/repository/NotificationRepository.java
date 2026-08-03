@@ -13,4 +13,6 @@ public interface NotificationRepository extends JpaRepository<NotificationEntity
     List<NotificationEntity> findByUser_UserIdAndIsRead(Integer userId, Integer isRead);
 
     List<NotificationEntity> findByUser_EmailAndIsReadOrderByCreatedAtDesc(String email, Integer isRead);
+    
+    List<NotificationEntity> findByUser_UserIdAndIsReadOrderByCreatedAtDesc(Integer userId, Integer isRead);
 }

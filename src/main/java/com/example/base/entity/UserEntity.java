@@ -1,5 +1,7 @@
 package com.example.base.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -14,7 +17,8 @@ import jakarta.persistence.Table;
 public class UserEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_seq_gen")
+    @SequenceGenerator(name = "user_seq_gen", sequenceName = "user_sequence", allocationSize = 1)
     private Integer userId;
 
     @Column(name = "name_surname", nullable = false, length = 100)
@@ -36,6 +40,23 @@ public class UserEntity {
    
     @Column(name = "registration_status", length = 20)
     private String registrationStatus = "PENDING";
+
+
+    @Column(name = "status", length = 20)
+    private String status = "ONAY_BEKLIYOR";
+
+
+    @Column(name = "password") 
+    private String password;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "is_banned")
+    private Boolean banned = false;
+
+    @Column(name = "ban_reason", length = 500)
+    private String banReason;
 
     public UserEntity() {
     }
@@ -106,4 +127,19 @@ public class UserEntity {
     public void setRegistrationStatus(String registrationStatus) {
         this.registrationStatus = registrationStatus;
     }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getPassword() {return password;}
+    public void setPassword(String password) {this.password = password;}
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public Boolean isBanned() { return banned != null ? banned : false; }
+    public void setBanned(Boolean banned) {this.banned = banned != null ? banned : false; }
+
+    public String getBanReason() { return banReason; }
+    public void setBanReason(String banReason) { this.banReason = banReason; }
 }

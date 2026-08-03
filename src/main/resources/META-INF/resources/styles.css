@@ -3,11 +3,9 @@
 html {
   --aura-accent-color-dark: #34D399;
   --aura-accent-color-light: #009966;
-  --aura-app-layout-inset: 0px;
   --aura-background-color-dark: #18181B;
-  --aura-background-color-light: #FFFFFF;
   --aura-base-font-size: 15;
-  --aura-base-size: 20;
+  --aura-base-radius: 4;
   --aura-content-color-scheme: light dark;
   --aura-font-family: 'Atkinson Hyperlegible Next', var(--aura-font-family-system);
   --aura-notification-color-scheme: dark;

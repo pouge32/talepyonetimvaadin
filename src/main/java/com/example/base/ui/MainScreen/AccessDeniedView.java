@@ -1,5 +1,9 @@
-package com.example.base.ui;
+package com.example.base.ui.MainScreen;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import com.example.base.service.SystemLogService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
@@ -16,8 +20,11 @@ import jakarta.annotation.security.PermitAll;
 public class AccessDeniedView extends VerticalLayout implements HasErrorParameter<AccessDeniedException> {
 
     private final Span errorMessage = new Span();
+    private final SystemLogService systemLogService;
 
-    public AccessDeniedView() {
+    public AccessDeniedView(SystemLogService systemLogService) {
+        this.systemLogService = systemLogService;
+
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
         setSizeFull();
@@ -36,8 +43,14 @@ public class AccessDeniedView extends VerticalLayout implements HasErrorParamete
 
     @Override
     public int setErrorParameter(BeforeEnterEvent event, ErrorParameter<AccessDeniedException> parameter) {
-        errorMessage.setText("Erişimi reddedilen adres: /" + event.getLocation().getPath());
+        String targetPath = "/" + event.getLocation().getPath();
+        errorMessage.setText("Erişimi reddedilen adres: " + targetPath);
         errorMessage.getStyle().set("font-size", "0.9em").set("color", "gray");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String userEmail = (auth != null && auth.isAuthenticated()) ? auth.getName() : "Anonim";
+        systemLogService.log("Güvenlik Uyarısı: " + userEmail + " kullanıcısı yetkisiz olarak '" + targetPath + "' sayfasına erişmeye çalıştı (403).");
+
         return 403;
     }
 }

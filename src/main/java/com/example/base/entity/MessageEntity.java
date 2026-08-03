@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,20 +20,22 @@ import jakarta.persistence.Table;
 public class MessageEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "msg_seq_gen")
+    @SequenceGenerator(name = "msg_seq_gen", sequenceName = "message_sequence", allocationSize = 1)
     @Column(name = "message_id")
-    private Integer messageId;
+    private Integer messageId;  
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "request_id", nullable = false, foreignKey = @ForeignKey(name = "fk_message_request"))
+    @JoinColumn(name = "request_id", nullable = false,
+            foreignKey = @ForeignKey(name = "fk_message_request"))
     private RequestEntity request;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "sender_id", nullable = false, foreignKey = @ForeignKey(name = "fk_sender"))
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "sender_id", nullable = false)
     private UserEntity sender;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "receiver_id", nullable = false, foreignKey = @ForeignKey(name = "fk_receiver"))
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "receiver_id", nullable = false)
     private UserEntity receiver;
 
     @Lob
@@ -45,61 +48,36 @@ public class MessageEntity {
     public MessageEntity() {
     }
 
-    public MessageEntity(Integer messageId, RequestEntity request, UserEntity sender, UserEntity receiver,
-                    String messageBody, LocalDateTime sentAt) {
-        this.messageId = messageId;
+    public MessageEntity(RequestEntity request, UserEntity sender, UserEntity receiver, String messageBody) {
         this.request = request;
         this.sender = sender;
         this.receiver = receiver;
         this.messageBody = messageBody;
-        this.sentAt = sentAt;
+        this.sentAt = LocalDateTime.now();
     }
 
-    public Integer getMessageId() {
-        return messageId;
-    }
+    public Integer getMessageId() { return messageId; }
+    public void setMessageId(Integer messageId) { this.messageId = messageId; }
 
-    public void setMessageId(Integer messageId) {
-        this.messageId = messageId;
-    }
+    public RequestEntity getRequest() { return request; }
+    public void setRequest(RequestEntity request) { this.request = request; }
 
-    public RequestEntity getRequest() {
-        return request;
-    }
+    public UserEntity getSender() { return sender; }
+    public void setSender(UserEntity sender) { this.sender = sender; }
 
-    public void setRequest(RequestEntity request) {
-        this.request = request;
-    }
+    public UserEntity getReceiver() { return receiver; }
+    public void setReceiver(UserEntity receiver) { this.receiver = receiver; }
 
-    public UserEntity getSender() {
-        return sender;
-    }
+    public String getMessageBody() { return messageBody; }
+    public void setMessageBody(String messageBody) { this.messageBody = messageBody; }
 
-    public void setSender(UserEntity sender) {
-        this.sender = sender;
-    }
+    public LocalDateTime getSentAt() { return sentAt; }
+    public void setSentAt(LocalDateTime sentAt) { this.sentAt = sentAt; }
+    
+    @Column(name = "is_read")
+    private Integer isRead = 0;
 
-    public UserEntity getReceiver() {
-        return receiver;
-    }
+    public Integer getIsRead() {return isRead;}
 
-    public void setReceiver(UserEntity receiver) {
-        this.receiver = receiver;
-    }
-
-    public String getMessageBody() {
-        return messageBody;
-    }
-
-    public void setMessageBody(String messageBody) {
-        this.messageBody = messageBody;
-    }
-
-    public LocalDateTime getSentAt() {
-        return sentAt;
-    }
-
-    public void setSentAt(LocalDateTime sentAt) {
-        this.sentAt = sentAt;
-    }
+    public void setIsRead(Integer isRead) {this.isRead = isRead;}
 }

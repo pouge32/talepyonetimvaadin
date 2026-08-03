@@ -5,5 +5,5 @@ public enum Role {
     PO,
     HELPDESK,
     ADMIN,
-    PRODUCT_OWNER
+    PROGRAMMER
 }

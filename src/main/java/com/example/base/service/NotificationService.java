@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.example.base.entity.NotificationEntity;
-import com.example.base.entity.Role;
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.NotificationRepository;
 import com.example.base.repository.UserRepository;
@@ -23,42 +22,36 @@ public class NotificationService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * Belirli bir role sahip tüm kullanıcılara bildirim gönderir.
-     * (ör. yeni talep geldiğinde tüm PO'lara)
-     */
-    @Transactional
-    public void notifyRole(Role role, String title, String content) {
-        List<UserEntity> targets = userRepository.findByRole(role);
-        for (UserEntity user : targets) {
-            saveNotification(user, title, content);
-        }
+    public List<NotificationEntity> getUnreadNotifications(Integer userId) {
+        return notificationRepository.findByUser_UserIdAndIsReadOrderByCreatedAtDesc(userId, 0);
     }
 
-    /**
-     * Tek bir kullanıcıya, ID üzerinden bildirim gönderir.
-     * ID her zaman AYNI transaction içinde yeniden çekilir; böylece
-     * başka bir session'dan gelen "kopuk" (detached) referanslardan
-     * kaynaklanan FK tutarsızlıkları önlenir.
-     */
+    @Transactional
+    public void markAsRead(NotificationEntity notification) {
+        notification.setIsRead(1);
+        notificationRepository.save(notification);
+    }
+
     @Transactional
     public void notifyUser(Integer userId, String title, String content) {
-        if (userId == null) {
-            return;
-        }
+        if (userId == null) return;
+        
         UserEntity user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Bildirim gönderilecek kullanıcı (ID: " + userId + ") veritabanında bulunamadı."));
-        saveNotification(user, title, content);
-    }
-
-    private void saveNotification(UserEntity user, String title, String content) {
+                .orElseThrow(() -> new IllegalStateException("Bildirim atılacak kullanıcı bulunamadı (ID: " + userId + ")"));
+                
         NotificationEntity bildirim = new NotificationEntity();
         bildirim.setUser(user);
         bildirim.setTitle(title);
         bildirim.setContent(content);
         bildirim.setIsRead(0);
         bildirim.setCreatedAt(LocalDateTime.now());
+        
         notificationRepository.save(bildirim);
+    }
+    @Transactional
+    public void notifyRole(String roleName, String title, String content) {
+        userRepository.findAll().stream()
+            .filter(u -> u.getRole() != null && u.getRole().name().equals(roleName))
+            .forEach(user -> notifyUser(user.getUserId(), title, content));
     }
 }

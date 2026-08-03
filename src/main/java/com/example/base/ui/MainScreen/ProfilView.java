@@ -1,7 +1,8 @@
-package com.example.base.ui;
+package com.example.base.ui.MainScreen;
 
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.UserRepository;
+import com.example.base.service.SystemLogService; 
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -34,17 +35,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Route(value = "profil", layout = MainLayout.class)
-@RolesAllowed(value = {"CUSTOMER", "HELPDESK", "PO", "ADMIN"})
+@RolesAllowed(value = {"CUSTOMER", "HELPDESK", "PO", "ADMIN","PROGRAMMER"})
 public class ProfilView extends VerticalLayout {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SystemLogService systemLogService;
     private UserEntity currentUser;
     private String newPhotoUrl = null;
 
-    public ProfilView(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public ProfilView(UserRepository userRepository, PasswordEncoder passwordEncoder, SystemLogService systemLogService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.systemLogService = systemLogService;
 
         setSpacing(true);
         setPadding(true);
@@ -145,6 +148,8 @@ public class ProfilView extends VerticalLayout {
                 }
 
                 userRepository.save(currentUser);
+
+                systemLogService.log("Kullanıcı (" + loggedInEmail + ") profil bilgilerini güncelledi.");
 
                 Notification.show("Profil bilgileriniz başarıyla güncellendi.", 3000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);

@@ -37,15 +37,34 @@ public class RequestEntity {
     @Column(name = "description", nullable = false)
     private String description;
 
-    
+
     @Column(name = "status", length = 30)
     private String status = "NEW";
+
+    @Column(name = "category", length = 50)
+    private String category = "Diğer";
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Lob
+    @Column(name = "screenshot_data")
+    private byte[] screenshotData;
+
+    @Column(name = "screenshot_filename", length = 255)
+    private String screenshotFileName;
+
+    @Column(name = "screenshot_mime_type", length = 100)
+    private String screenshotMimeType;
+
     @OneToOne(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private PrioritizationEntity prioritization;
+
+    @Column(name = "satisfaction_score")
+    private Integer satisfactionScore;
+
+    @Column(name = "satisfaction_comment", length = 500)
+    private String satisfactionComment;
 
     public RequestEntity() {
     }
@@ -116,4 +135,42 @@ public class RequestEntity {
     public void setPrioritization(PrioritizationEntity prioritization) {
         this.prioritization = prioritization;
     }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public byte[] getScreenshotData() {
+        return screenshotData;
+    }
+
+    public void setScreenshotData(byte[] screenshotData) {
+        this.screenshotData = screenshotData;
+    }
+
+    public String getScreenshotFileName() {
+        return screenshotFileName;
+    }
+
+    public void setScreenshotFileName(String screenshotFileName) {
+        this.screenshotFileName = screenshotFileName;
+    }
+
+    public String getScreenshotMimeType() {
+        return screenshotMimeType;
+    }
+
+    public void setScreenshotMimeType(String screenshotMimeType) {
+        this.screenshotMimeType = screenshotMimeType;
+    }
+
+    public Integer getSatisfactionScore() { return satisfactionScore; }
+    public void setSatisfactionScore(Integer satisfactionScore) { this.satisfactionScore = satisfactionScore; }
+
+    public String getSatisfactionComment() { return satisfactionComment; }
+    public void setSatisfactionComment(String satisfactionComment) { this.satisfactionComment = satisfactionComment; }
 }
