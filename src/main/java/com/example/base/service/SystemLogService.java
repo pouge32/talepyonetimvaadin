@@ -28,7 +28,6 @@ public class SystemLogService {
         }
     }
 
-    // ZAMAN ÇİZELGESİ İÇİN EKLENEN METOT
     public List<SystemLogEntity> getLogsForRequest(Integer requestId) {
         return systemLogRepository.findByActionContaining("ID: " + requestId);
     }

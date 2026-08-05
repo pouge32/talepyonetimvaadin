@@ -24,10 +24,8 @@ public class ExcelExportService {
     public ByteArrayInputStream exportRequestsToExcel(List<RequestEntity> requests) {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             
-            // Sekme adı 31 karakter sınırına uyacak şekilde kısaltıldı
             Sheet sheet = workbook.createSheet("Talep Raporu");
 
-            // Başlık satırı için stil
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -35,7 +33,6 @@ public class ExcelExportService {
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
-            // Başlıkları tanımla
             String[] columns = {"Talep ID", "Başlık", "Müşteri E-Posta", "Sistem Durumu", "Oluşturulma Tarihi", "Memnuniyet Puanı"};
             Row headerRow = sheet.createRow(0);
 
@@ -45,7 +42,6 @@ public class ExcelExportService {
                 cell.setCellStyle(headerStyle);
             }
 
-            // Verileri doldur
             int rowIdx = 1;
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
 
@@ -55,7 +51,6 @@ public class ExcelExportService {
                 row.createCell(0).setCellValue(req.getRequestId() != null ? req.getRequestId() : 0);
                 row.createCell(1).setCellValue(req.getTitle() != null ? req.getTitle() : "Bilinmiyor");
                 
-                // Lazy loading (no session) hatasını önlemek için güvenli e-posta okuma
                 String email = "Atanmadı";
                 try {
                     if (req.getCustomer() != null && req.getCustomer().getEmail() != null) {
@@ -75,7 +70,6 @@ public class ExcelExportService {
                 row.createCell(5).setCellValue(score);
             }
 
-            // Sütun genişliklerini otomatik ayarla
             for (int i = 0; i < columns.length; i++) {
                 sheet.autoSizeColumn(i);
             }

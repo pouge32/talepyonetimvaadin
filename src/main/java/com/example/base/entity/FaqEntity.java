@@ -22,6 +22,12 @@ public class FaqEntity {
     @Column(length = 1000)
     private String answer;
 
+    @Column(name = "question_en")
+    private String questionEn;
+
+    @Column(name = "answer_en")
+    private String answerEn;
+
     public FaqEntity() {}
     public FaqEntity(String question, String answer) {
         this.question = question;
@@ -33,4 +39,8 @@ public class FaqEntity {
     public void setQuestion(String question) { this.question = question; }
     public String getAnswer() { return answer; }
     public void setAnswer(String answer) { this.answer = answer; }
+    public String getQuestionEn() { return questionEn; }
+    public void setQuestionEn(String questionEn) { this.questionEn = questionEn; }
+    public String getAnswerEn() { return answerEn; }
+    public void setAnswerEn(String answerEn) { this.answerEn = answerEn; }
 }

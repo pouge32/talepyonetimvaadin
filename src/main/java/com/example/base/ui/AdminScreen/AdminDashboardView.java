@@ -6,7 +6,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
@@ -21,13 +20,14 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "admin-dashboard", layout = MainLayout.class)
 @RolesAllowed("ADMIN")
-public class AdminDashboardView extends VerticalLayout {
+public class AdminDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
@@ -40,7 +40,7 @@ public class AdminDashboardView extends VerticalLayout {
 
         UI.getCurrent().getPage().addJavaScript("https://cdn.jsdelivr.net/npm/apexcharts");
 
-        H3 title = new H3("Sistem Yönetim Paneli (Admin)");
+        H3 title = new H3(getTranslation("admin.dashboard.title"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
 
         dashboardContainer.setWidthFull();
@@ -49,6 +49,11 @@ public class AdminDashboardView extends VerticalLayout {
         
         add(title, dashboardContainer);
         refreshDashboard();
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("admin.dashboard.pageTitle");
     }
 
     private void refreshDashboard() {
@@ -73,13 +78,13 @@ public class AdminDashboardView extends VerticalLayout {
         statRow.setWidthFull();
         statRow.getStyle().set("gap", "20px");
 
-        HorizontalLayout userCard = createStatCard("Toplam Kullanıcı", String.valueOf(totalUsers), VaadinIcon.USERS.create(), usersColor);
+        HorizontalLayout userCard = createStatCard(getTranslation("admin.stat.totalUsers"), String.valueOf(totalUsers), VaadinIcon.USERS.create(), usersColor);
         userCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout totalReqCard = createStatCard("Sistemdeki Toplam Talep", String.valueOf(totalRequests), VaadinIcon.CLIPBOARD_TEXT.create(), requestsColor);
+        HorizontalLayout totalReqCard = createStatCard(getTranslation("admin.stat.totalRequests"), String.valueOf(totalRequests), VaadinIcon.CLIPBOARD_TEXT.create(), requestsColor);
         totalReqCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout closedReqCard = createStatCard("Çözülen Toplam Talep", String.valueOf(closedRequests), VaadinIcon.CHECK_SQUARE_O.create(), successColor);
+        HorizontalLayout closedReqCard = createStatCard(getTranslation("admin.stat.closedRequests"), String.valueOf(closedRequests), VaadinIcon.CHECK_SQUARE_O.create(), successColor);
         closedReqCard.getElement().getStyle().set("flex", "1");
 
         statRow.add(userCard, totalReqCard, closedReqCard);
@@ -88,10 +93,10 @@ public class AdminDashboardView extends VerticalLayout {
         chartRow.setWidthFull();
         chartRow.getStyle().set("gap", "20px");
 
-        VerticalLayout activityCard = createChartCard("Sistem Aktivite Trendi", "admin-activity-chart", "280px");
+        VerticalLayout activityCard = createChartCard(getTranslation("admin.chart.activityTrend"), "admin-activity-chart", "280px");
         activityCard.getElement().getStyle().set("flex", "2"); 
 
-        VerticalLayout statusCard = createChartCard("Genel Talep Dağılımı", "admin-status-chart", "280px");
+        VerticalLayout statusCard = createChartCard(getTranslation("admin.chart.statusDistribution"), "admin-status-chart", "280px");
         statusCard.getElement().getStyle().set("flex", "1");
 
         chartRow.add(activityCard, statusCard);
@@ -106,7 +111,7 @@ public class AdminDashboardView extends VerticalLayout {
         List<Long> yeniKullaniciTrend = new ArrayList<>();
         List<Long> yeniTalepTrend = new ArrayList<>();
         
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", new Locale("tr"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", UI.getCurrent().getLocale());
         LocalDate bugun = LocalDate.now();
 
         for (int i = 6; i >= 0; i--) {
@@ -129,20 +134,26 @@ public class AdminDashboardView extends VerticalLayout {
             yeniTalepTrend.add(oGunGelenTalep);
         }
 
+        String labelClosed = getTranslation("admin.chart.legend.closed");
+        String labelActive = getTranslation("admin.chart.legend.active");
+        String seriesUsers = getTranslation("admin.chart.series.newUsers");
+        String seriesRequests = getTranslation("admin.chart.series.newRequests");
+
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
             
             "    var statusEl = document.querySelector('#admin-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['Kapatılan', 'Açık/İşlemde'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$6', '$7'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    var actEl = document.querySelector('#admin-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: 'Yeni Kullanıcılar', data: $4 }, { name: 'Yeni Talepler', data: $5 }], chart: { type: 'area', height: 280, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6', '#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$8', data: $4 }, { name: '$9', data: $5 }], chart: { type: 'area', height: 280, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6', '#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
             
             "  }" +
             "}, 500);", 
             dataKapatilan, dataAcik, color1, color2,
-            yeniKullaniciTrend, yeniTalepTrend, trendGunleri
+            yeniKullaniciTrend, yeniTalepTrend, trendGunleri,
+            labelClosed, labelActive, seriesUsers, seriesRequests
         );
     }
 

@@ -36,3 +36,6 @@ vaadin-side-nav::part(label) {
   --vaadin-button-border-color: transparent;
   --vaadin-button-shadow: none;
 }
+vaadin-login-form-wrapper [part="error-message"] {
+    display: none !important;
+}

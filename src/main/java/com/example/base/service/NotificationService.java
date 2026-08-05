@@ -16,10 +16,13 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    
+    private final NotificationBroadcaster broadcaster; 
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, NotificationBroadcaster broadcaster) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.broadcaster = broadcaster;
     }
 
     public List<NotificationEntity> getUnreadNotifications(Integer userId) {
@@ -47,11 +50,19 @@ public class NotificationService {
         bildirim.setCreatedAt(LocalDateTime.now());
         
         notificationRepository.save(bildirim);
+        
+        broadcaster.broadcast(userId);
     }
+    
     @Transactional
     public void notifyRole(String roleName, String title, String content) {
         userRepository.findAll().stream()
             .filter(u -> u.getRole() != null && u.getRole().name().equals(roleName))
             .forEach(user -> notifyUser(user.getUserId(), title, content));
+    }
+
+    @Transactional
+    public void deleteNotification(Integer notificationId) {
+        notificationRepository.deleteById(notificationId);
     }
 }

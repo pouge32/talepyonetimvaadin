@@ -2,6 +2,7 @@ package com.example.base.ui.HelpDeskerScreen;
 
 import java.io.ByteArrayInputStream;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
 
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
 import com.example.base.service.ChatService;
 import com.example.base.service.NotificationService;
+import com.example.base.service.SettingsService;
 import com.example.base.service.SystemLogService;
 import com.example.base.ui.Class.TalepChat;
 import com.example.base.ui.MainScreen.MainLayout;
@@ -34,75 +36,124 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
-import java.time.temporal.ChronoUnit;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "on-inceleme", layout = MainLayout.class)
 @RolesAllowed("HELPDESK")
-public class OnIncelemeView extends VerticalLayout {
+public class OnIncelemeView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
     private final NotificationService notificationService;
     private final ChatService chatService;
     private final UserRepository userRepository;
     private final SystemLogService systemLogService;
+    private final SettingsService settingsService;
+    
     private final Grid<RequestEntity> grid = new Grid<>(RequestEntity.class, false);
-
     private GridListDataView<RequestEntity> dataView;
     private final RequestFilter requestFilter = new RequestFilter();
     
     private RequestEntity selectedRequest;
     private Dialog closeDialog = new Dialog();
-    private TextArea closeReason = new TextArea("Kapatma / Red Nedeni");
+    private TextArea closeReason = new TextArea();
 
-    public OnIncelemeView(RequestRepository requestRepository, NotificationService notificationService, 
-                          ChatService chatService, UserRepository userRepository, SystemLogService systemLogService) {
+    private UserEntity currentUser;
+
+    public OnIncelemeView(RequestRepository requestRepository, NotificationService notificationService,
+                          ChatService chatService, UserRepository userRepository,
+                          SystemLogService systemLogService, SettingsService settingsService) {
         this.requestRepository = requestRepository;
         this.notificationService = notificationService;
         this.chatService = chatService;
         this.userRepository = userRepository;
         this.systemLogService = systemLogService;
+        this.settingsService = settingsService;
 
-        add(new H3("Ön İnceleme ve Triyaj (Destek Ekranı)"));
+        setSizeFull();
+        setPadding(true);
+        setSpacing(true);
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = (auth != null) ? auth.getName() : "";
+        currentUser = userRepository.findByEmail(email).orElse(null);
+
+        HorizontalLayout headerLayout = new HorizontalLayout();
+        headerLayout.setWidthFull();
+        headerLayout.setAlignItems(FlexComponent.Alignment.BASELINE);
+        headerLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+
+        H3 title = new H3(getTranslation("helpdesk.triage.headerTitle"));
+        title.getStyle().set("margin", "0");
+
+        Tab tabMine = new Tab(getTranslation("helpdesk.triage.tab.assignedToMe"));
+        Tab tabAll = new Tab(getTranslation("helpdesk.triage.tab.allPool"));
+        Tabs tabs = new Tabs(tabMine, tabAll);
+        
+        tabs.addSelectedChangeListener(event -> {
+            if (event.getSelectedTab().equals(tabMine) && currentUser != null) {
+                requestFilter.setAssignedUserIdFilter(currentUser.getUserId());
+            } else {
+                requestFilter.setAssignedUserIdFilter(null);
+            }
+        });
+
+        headerLayout.add(title, tabs);
+        add(headerLayout);
+
+        if (currentUser != null) {
+            requestFilter.setAssignedUserIdFilter(currentUser.getUserId());
+        }
 
         configureGrid();
         configureCloseDialog();
 
+        grid.setWidthFull();
         add(grid);
         refreshGrid();
     }
 
+    @Override
+    public String getPageTitle() {
+        return getTranslation("helpdesk.triage.pageTitle");
+    }
+
     private void configureGrid() {
-        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader("Başlık");
-        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader("Detay");
+        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("helpdesk.triage.grid.title"));
+        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader(getTranslation("helpdesk.triage.grid.desc"));
         
-        // DURUM KOLONU EKLENDİ
-        Grid.Column<RequestEntity> statusCol = grid.addComponentColumn(this::createStatusBadge).setHeader("Durum").setAutoWidth(true);
-        Grid.Column<RequestEntity> dateCol = grid.addColumn(RequestEntity::getCreatedAt).setHeader("Oluşturulma Tarihi");
-        
+        Grid.Column<RequestEntity> assignedCol = grid.addColumn(req -> {
+            try {
+                return req.getAssignedUser() != null ? req.getAssignedUser().getNameSurname() : getTranslation("helpdesk.triage.unassigned");
+            } catch (Exception e) {
+                return getTranslation("helpdesk.triage.unassigned");
+            }
+        }).setHeader(getTranslation("helpdesk.triage.grid.assignedUser")).setAutoWidth(true);
+
+        Grid.Column<RequestEntity> statusCol = grid.addComponentColumn(this::createStatusBadge).setHeader(getTranslation("helpdesk.triage.grid.status")).setAutoWidth(true);
+        Grid.Column<RequestEntity> dateCol = grid.addColumn(RequestEntity::getCreatedAt).setHeader(getTranslation("helpdesk.triage.grid.createdAt"));
 
         grid.addComponentColumn(this::createScreenshotButton)
-                .setHeader("Ekran Görüntüsü").setAutoWidth(true).setFlexGrow(0);
+                .setHeader(getTranslation("helpdesk.triage.grid.screenshot")).setAutoWidth(true).setFlexGrow(0);
 
         grid.addComponentColumn(request -> {
-            Button chatButton = new Button("Sohbet", VaadinIcon.CHAT.create());
+            Button chatButton = new Button(getTranslation("helpdesk.triage.btn.chat"), VaadinIcon.CHAT.create());
             chatButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
 
             Div container = new Div(chatButton);
             container.getStyle().set("position", "relative").set("display", "inline-block");
-
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String email = (auth != null) ? auth.getName() : "";
-            UserEntity currentUser = userRepository.findByEmail(email).orElse(null);
 
             if (currentUser != null) {
                 int unreadCount = chatService.getUnreadMessageCount(request.getRequestId(), currentUser.getUserId());
@@ -116,69 +167,77 @@ public class OnIncelemeView extends VerticalLayout {
             }
 
             chatButton.addClickListener(e -> {
+                String email = (currentUser != null) ? currentUser.getEmail() : "Bilinmiyor";
                 systemLogService.log("Destek Personeli (" + email + "), ID: " + request.getRequestId() + " olan talebin sohbetine girdi.");
                 e.getSource().getUI().ifPresent(ui -> ui.navigate(TalepChat.class, request.getRequestId()));
             });
             return container;
-        }).setHeader("Sohbet").setAutoWidth(true);
+        }).setHeader(getTranslation("helpdesk.triage.grid.chat")).setAutoWidth(true);
 
-        // DEĞERLENDİRME (MEMNUNİYET) KOLONU (SADECE OKUMA)
-        grid.addComponentColumn(this::createRatingColumn).setHeader("Değerlendirme").setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createRatingColumn).setHeader(getTranslation("helpdesk.triage.grid.rating")).setAutoWidth(true).setFlexGrow(0);
 
         grid.addComponentColumn(request -> {
-            // SADECE "NEW" (Yeni) STATÜSÜNDEKİ TALEPLERDE İŞLEM YAPILABİLİR
             if (!"NEW".equals(request.getStatus())) {
                 return new Span("-"); 
             }
 
-            Button closeBtn = new Button("Kapat", VaadinIcon.CLOSE_CIRCLE.create());
+            Button closeBtn = new Button(getTranslation("helpdesk.triage.btn.closeRequest"), VaadinIcon.CLOSE_CIRCLE.create());
             closeBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
             closeBtn.addClickListener(e -> {
                 selectedRequest = request;
                 closeDialog.open();
             });
 
-            Button sendToPoBtn = new Button("PO'ya Sevk Et", VaadinIcon.ARROW_RIGHT.create());
+            Button sendToPoBtn = new Button(getTranslation("helpdesk.triage.btn.forwardPo"), VaadinIcon.ARROW_RIGHT.create());
             sendToPoBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
             sendToPoBtn.addClickListener(e -> forwardToPo(request));
 
             return new HorizontalLayout(closeBtn, sendToPoBtn);
-        }).setHeader("İşlemler").setAutoWidth(true);
+        }).setHeader(getTranslation("helpdesk.triage.grid.actions")).setAutoWidth(true);
+
+        TextField searchField = new TextField();
+        searchField.setPlaceholder(getTranslation("helpdesk.triage.filter.searchPlaceholder"));
+        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.setClearButtonVisible(true);
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
+        searchField.setWidthFull();
+        searchField.addValueChangeListener(e -> requestFilter.setSearchTerm(e.getValue()));
 
         HeaderRow headerRow = grid.appendHeaderRow();
-        headerRow.getCell(titleCol).setComponent(createFilterHeader("Başlığa göre ara...", requestFilter::setTitle));
-        headerRow.getCell(descCol).setComponent(createFilterHeader("Detaya göre ara...", requestFilter::setDescription));
+        headerRow.getCell(titleCol).setComponent(searchField);
+        headerRow.getCell(descCol).setComponent(new Span());
+        headerRow.getCell(assignedCol).setComponent(new Span());
         headerRow.getCell(statusCol).setComponent(createStatusFilterHeader(requestFilter::setStatus));
         headerRow.getCell(dateCol).setComponent(createDateRangeFilterHeader(requestFilter));
 
-        grid.addComponentColumn(this::createSlaBadge).setHeader("SLA Durumu").setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createSlaBadge).setHeader(getTranslation("helpdesk.triage.grid.sla")).setAutoWidth(true).setFlexGrow(0);
     }
 
     private Badge createSlaBadge(RequestEntity request) {
         if ("KAPATILDI".equals(request.getStatus())) {
-            Badge closedBadge = new Badge("Tamamlandı");
+            Badge closedBadge = new Badge(getTranslation("requests.sla.completed"));
             closedBadge.addThemeVariants(BadgeVariant.CONTRAST); 
             return closedBadge;
         }
 
         long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
-
         
-        long slaLimitHours = 24; 
-        long warningLimitHours = (long) (slaLimitHours * 0.75);
+        long slaLimitHours = settingsService.getSlaLimitHours();
+        long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
 
         if (hoursElapsed >= slaLimitHours) {
-            Badge ihlalBadge = new Badge("İHLAL (" + hoursElapsed + "s)");
+            Badge ihlalBadge = new Badge(getTranslation("requests.sla.violated") + " (" + hoursElapsed + "s)");
             ihlalBadge.addThemeVariants(BadgeVariant.ERROR);
-            ihlalBadge.getElement().setProperty("title", "SLA Süresi Aşıldı!");
+            ihlalBadge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
             return ihlalBadge;
         } else if (hoursElapsed >= warningLimitHours) {
-            Badge uyariBadge = new Badge("YAKLAŞIYOR (" + hoursElapsed + "s)");
+            Badge uyariBadge = new Badge(getTranslation("requests.sla.warning") + " (" + hoursElapsed + "s)");
             uyariBadge.addThemeVariants(BadgeVariant.WARNING);
-            uyariBadge.getElement().setProperty("title", "SLA İhlaline Az Kaldı!");
+            uyariBadge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
             return uyariBadge;
         } else {
-            Badge normalBadge = new Badge("NORMAL (" + hoursElapsed + "s)");
+            Badge normalBadge = new Badge(getTranslation("requests.sla.normal") + " (" + hoursElapsed + "s)");
             normalBadge.addThemeVariants(BadgeVariant.SUCCESS);
             return normalBadge;
         }
@@ -191,17 +250,16 @@ public class OnIncelemeView extends VerticalLayout {
             pointBadge.getStyle().set("font-weight", "bold");
             
             if (request.getSatisfactionComment() != null && !request.getSatisfactionComment().isEmpty()) {
-                pointBadge.getElement().setProperty("title", "Yorum: " + request.getSatisfactionComment());
+                pointBadge.getElement().setProperty("title", getTranslation("helpdesk.triage.commentPrefix") + ": " + request.getSatisfactionComment());
                 pointBadge.getStyle().set("cursor", "help");
             }
             return pointBadge;
         } else if ("KAPATILDI".equals(request.getStatus())) {
-            return new Span("Puanlanmamış");
+            return new Span(getTranslation("helpdesk.triage.unrated"));
         }
         return new Span("-");
     }
 
-    // --- DURUM ROZETİ ---
     private Badge createStatusBadge(RequestEntity request) {
         String status = request.getStatus() != null ? request.getStatus() : "";
         Badge badge = new Badge(status);
@@ -219,23 +277,23 @@ public class OnIncelemeView extends VerticalLayout {
     private Component createScreenshotButton(RequestEntity request) {
         boolean hasScreenshot = request.getScreenshotData() != null && request.getScreenshotData().length > 0;
 
-        Button button = new Button(hasScreenshot ? "Görüntüle" : "Yok", VaadinIcon.PICTURE.create());
+        Button button = new Button(hasScreenshot ? getTranslation("requests.btn.view") : getTranslation("requests.btn.none"), VaadinIcon.PICTURE.create());
         button.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
 
         if (!hasScreenshot) {
             button.setEnabled(false);
-            button.getElement().setProperty("title", "Bu talebe ekran görüntüsü eklenmemiş");
+            button.getElement().setProperty("title", getTranslation("requests.tooltip.noScreenshot"));
             return button;
         }
 
-        button.getElement().setProperty("title", "Ekran görüntüsünü büyük görüntüle");
+        button.getElement().setProperty("title", getTranslation("requests.tooltip.viewScreenshot"));
         button.addClickListener(e -> openScreenshotDialog(request));
         return button;
     }
 
     private void openScreenshotDialog(RequestEntity request) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Ekran Görüntüsü - Talep #" + request.getRequestId());
+        dialog.setHeaderTitle(getTranslation("requests.dialog.screenshotTitle") + " #" + request.getRequestId());
         dialog.setWidth("640px");
         dialog.setCloseOnOutsideClick(true);
 
@@ -250,42 +308,31 @@ public class OnIncelemeView extends VerticalLayout {
                 .set("object-fit", "contain")
                 .set("border-radius", "8px");
 
-        Button closeBtn = new Button("Kapat", e -> dialog.close());
+        Button closeBtn = new Button(getTranslation("requests.btn.close"), e -> dialog.close());
 
         dialog.add(image);
         dialog.getFooter().add(closeBtn);
         dialog.open();
     }
 
-    private static Component createFilterHeader(String placeholder, Consumer<String> filterChangeConsumer) {
-        TextField textField = new TextField();
-        textField.setPlaceholder(placeholder);
-        textField.setValueChangeMode(ValueChangeMode.EAGER);
-        textField.setClearButtonVisible(true);
-        textField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
-        textField.setWidthFull();
-        textField.addValueChangeListener(e -> filterChangeConsumer.accept(e.getValue()));
-        return textField;
-    }
-
-    private static Component createStatusFilterHeader(Consumer<String> filterChangeConsumer) {
+    private Component createStatusFilterHeader(Consumer<String> filterChangeConsumer) {
         ComboBox<String> comboBox = new ComboBox<>();
         comboBox.setItems("NEW", "INCELEMEDE", "ONAYLANDI", "İş Akışına Dönüştü", "KAPATILDI");
-        comboBox.setPlaceholder("Durum seç...");
+        comboBox.setPlaceholder(getTranslation("requests.filter.statusPlaceholder"));
         comboBox.setClearButtonVisible(true);
         comboBox.setWidthFull();
         comboBox.addValueChangeListener(e -> filterChangeConsumer.accept(e.getValue()));
         return comboBox;
     }
 
-    private static Component createDateRangeFilterHeader(RequestFilter requestFilter) {
+    private Component createDateRangeFilterHeader(RequestFilter requestFilter) {
         DatePicker startPicker = new DatePicker();
-        startPicker.setPlaceholder("Başlangıç");
+        startPicker.setPlaceholder(getTranslation("requests.filter.startDate"));
         startPicker.setClearButtonVisible(true);
         startPicker.setWidthFull();
 
         DatePicker endPicker = new DatePicker();
-        endPicker.setPlaceholder("Bitiş");
+        endPicker.setPlaceholder(getTranslation("requests.filter.endDate"));
         endPicker.setClearButtonVisible(true);
         endPicker.setWidthFull();
 
@@ -299,30 +346,30 @@ public class OnIncelemeView extends VerticalLayout {
             requestFilter.setEndDate(e.getValue() != null ? e.getValue().atTime(23, 59, 59) : null);
         });
 
-        HorizontalLayout layout = new HorizontalLayout(startPicker, endPicker);
+        VerticalLayout layout = new VerticalLayout(startPicker, endPicker);
         layout.setWidthFull();
-        layout.setSpacing(false);
+        layout.setPadding(false);
+        layout.setSpacing(true);
         return layout;
     }
 
     private void configureCloseDialog() {
-        closeDialog.setHeaderTitle("Talebi Kapat / Reddet");
+        closeDialog.setHeaderTitle(getTranslation("helpdesk.triage.dialog.closeTitle"));
+        closeReason.setLabel(getTranslation("helpdesk.triage.dialog.closeReasonLabel"));
         closeReason.setWidthFull();
 
-        Button confirmCloseBtn = new Button("Talebi Kapat", event -> {
+        Button confirmCloseBtn = new Button(getTranslation("helpdesk.triage.dialog.closeConfirmBtn"), event -> {
             if (selectedRequest != null) {
                 selectedRequest.setStatus("KAPATILDI");
                 requestRepository.save(selectedRequest);
 
-                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                String staffEmail = (auth != null) ? auth.getName() : "";
-                
+                String staffEmail = (currentUser != null) ? currentUser.getEmail() : "Bilinmiyor";
                 systemLogService.log("Destek Personeli (" + staffEmail + "), ID: " + selectedRequest.getRequestId() + " olan talebi kapattı. Gerekçe: " + closeReason.getValue());
 
                 if (selectedRequest.getCustomer() != null) {
-                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), "Talebiniz Kapatıldı", "Açıklama: " + closeReason.getValue());
+                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), getTranslation("helpdesk.triage.notif.requestClosedTitle"), getTranslation("helpdesk.triage.notif.descPrefix") + ": " + closeReason.getValue());
                 }
-                Notification.show("Talep kapatıldı.", 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                Notification.show(getTranslation("helpdesk.triage.notif.closed"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 closeDialog.close();
                 closeReason.clear();
                 selectedRequest = null;
@@ -330,7 +377,7 @@ public class OnIncelemeView extends VerticalLayout {
             }
         });
         confirmCloseBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelBtn = new Button("İptal", e -> closeDialog.close());
+        Button cancelBtn = new Button(getTranslation("requests.btn.cancel"), e -> closeDialog.close());
 
         closeDialog.getFooter().add(confirmCloseBtn, cancelBtn);
         closeDialog.add(closeReason);
@@ -340,44 +387,37 @@ public class OnIncelemeView extends VerticalLayout {
         request.setStatus("INCELEMEDE");
         requestRepository.save(request);
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String staffEmail = (auth != null) ? auth.getName() : "";
-        
+        String staffEmail = (currentUser != null) ? currentUser.getEmail() : "Bilinmiyor";
         systemLogService.log("Destek Personeli (" + staffEmail + "), ID: " + request.getRequestId() + " olan talebi PO'ya sevk etti.");
 
         if (request.getCustomer() != null) {
-            notificationService.notifyUser(request.getCustomer().getUserId(), "Talebiniz İnceleniyor", "Talebiniz ürün yönetimi (PO) havuzuna aktarıldı.");
+            notificationService.notifyUser(request.getCustomer().getUserId(), getTranslation("helpdesk.triage.notif.underReviewTitle"), getTranslation("helpdesk.triage.notif.underReviewDesc"));
         }
-        Notification.show("Talep PO havuzuna sevk edildi!", 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+        Notification.show(getTranslation("helpdesk.triage.notif.forwarded"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
         refreshGrid();
     }
 
     private void refreshGrid() {
-        // Tüm talepleri getiriyoruz (Sadece NEW olanları değil)
         dataView = grid.setItems(requestRepository.findAll());
         requestFilter.setDataView(dataView); 
     }
 
     private static class RequestFilter {
         private GridListDataView<RequestEntity> dataView;
-        private String title = "";
-        private String description = "";
+        private String searchTerm = "";
         private String status = "";
         private LocalDateTime startDate;
         private LocalDateTime endDate;
+        
+        private Integer assignedUserIdFilter = null;
 
         public void setDataView(GridListDataView<RequestEntity> dataView) {
             this.dataView = dataView;
             this.dataView.addFilter(this::test);
         }
 
-        public void setTitle(String title) {
-            this.title = title != null ? title : "";
-            if (dataView != null) dataView.refreshAll();
-        }
-
-        public void setDescription(String description) {
-            this.description = description != null ? description : "";
+        public void setSearchTerm(String searchTerm) {
+            this.searchTerm = searchTerm != null ? searchTerm.toLowerCase().trim() : "";
             if (dataView != null) dataView.refreshAll();
         }
 
@@ -396,22 +436,36 @@ public class OnIncelemeView extends VerticalLayout {
             if (dataView != null) dataView.refreshAll();
         }
 
+        public void setAssignedUserIdFilter(Integer assignedUserIdFilter) {
+            this.assignedUserIdFilter = assignedUserIdFilter;
+            if (dataView != null) dataView.refreshAll();
+        }
+
         public boolean test(RequestEntity request) {
-            boolean matchesTitle = matches(request.getTitle(), title);
-            boolean matchesDesc = matches(request.getDescription(), description);
-            boolean matchesStatus = matches(request.getStatus(), status);
+            boolean matchesSearch = true;
+            if (!searchTerm.isEmpty()) {
+                boolean inTitle = request.getTitle() != null && request.getTitle().toLowerCase().contains(searchTerm);
+                boolean inDesc = request.getDescription() != null && request.getDescription().toLowerCase().contains(searchTerm);
+                boolean inId = String.valueOf(request.getRequestId()).contains(searchTerm);
+                matchesSearch = inTitle || inDesc || inId;
+            }
+
+            boolean matchesStatus = status.isEmpty() ||
+                    (request.getStatus() != null && request.getStatus().equalsIgnoreCase(status));
+
             boolean matchesDate = true;
-            
             if (request.getCreatedAt() != null) {
                 if (startDate != null && request.getCreatedAt().isBefore(startDate)) matchesDate = false;
                 if (endDate != null && request.getCreatedAt().isAfter(endDate)) matchesDate = false;
             }
-            return matchesTitle && matchesDesc && matchesStatus && matchesDate;
-        }
 
-        private boolean matches(String value, String searchTerm) {
-            return searchTerm == null || searchTerm.isEmpty() || 
-                   (value != null && value.toLowerCase().contains(searchTerm.toLowerCase()));
+            boolean matchesAssignedUser = true;
+            if (assignedUserIdFilter != null) {
+                matchesAssignedUser = request.getAssignedUser() != null &&
+                                      request.getAssignedUser().getUserId().equals(assignedUserIdFilter);
+            }
+
+            return matchesSearch && matchesStatus && matchesDate && matchesAssignedUser;
         }
     }
 }

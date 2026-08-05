@@ -32,4 +32,11 @@ public class FaqService {
         if(keyword == null || keyword.isEmpty()) return faqRepository.findAll();
         return faqRepository.findByQuestionContainingIgnoreCaseOrAnswerContainingIgnoreCase(keyword, keyword);
     }
+
+    public List<FaqEntity> searchFaq(String keyword, boolean isEnglish) {
+        if (keyword == null || keyword.isBlank()) {
+            return faqRepository.findAll();
+        }
+        return faqRepository.findByQuestionContainingIgnoreCaseOrAnswerContainingIgnoreCase(keyword, keyword);
+    }
 }

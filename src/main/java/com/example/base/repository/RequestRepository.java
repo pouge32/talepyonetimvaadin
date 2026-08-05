@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import com.example.base.entity.RequestEntity;
+import com.example.base.entity.UserEntity;
 
 public interface RequestRepository extends JpaRepository<RequestEntity, Integer> {
 
@@ -32,4 +33,9 @@ public interface RequestRepository extends JpaRepository<RequestEntity, Integer>
 
     @Query("SELECT r.category, COUNT(r) FROM RequestEntity r WHERE r.status = 'INCELEMEDE' GROUP BY r.category")
     List<Object[]> countPendingRequestsByCategory();
+
+    List<RequestEntity> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+    String titleKeyword, String descriptionKeyword);
+
+    long countByAssignedUserAndStatusIn(UserEntity assignedUser, List<String> statuses);
 }

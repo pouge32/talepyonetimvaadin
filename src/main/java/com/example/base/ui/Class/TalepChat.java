@@ -30,6 +30,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEvent;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.OptionalParameter;
 import com.vaadin.flow.router.Route;
@@ -38,7 +39,7 @@ import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "talep-chat", layout = MainLayout.class)
 @RolesAllowed({"CUSTOMER", "HELPDESK", "PO", "ADMIN"})
-public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer> {
+public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer>, HasDynamicTitle {
 
     private final ChatService chatService;
     private final RequestRepository requestRepository;
@@ -47,7 +48,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
 
     private final VerticalLayout messageArea = new VerticalLayout();
     private final TextField input = new TextField();
-    private final Button sendButton = new Button("Gönder");
+    private final Button sendButton = new Button();
 
     private Integer requestId;
     private RequestEntity currentRequest; 
@@ -58,14 +59,16 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     public TalepChat(ChatService chatService, RequestRepository requestRepository,
-                     UserRepository userRepository, SystemLogService systemLogService) {
+                       UserRepository userRepository, SystemLogService systemLogService) {
         this.chatService = chatService;
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.systemLogService = systemLogService;
 
         setSizeFull();
-        add(new H3("Canlı Destek Sohbeti"));
+        
+        H3 headerTitle = new H3(getTranslation("chat.headerTitle"));
+        add(headerTitle);
 
         messageArea.setSizeFull();
         messageArea.getStyle()
@@ -73,10 +76,11 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
                 .set("border-radius", "8px")
                 .set("padding", "12px");
 
-        input.setPlaceholder("Mesajınızı yazın...");
+        input.setPlaceholder(getTranslation("chat.inputPlaceholder"));
         input.setWidthFull();
         input.addKeyDownListener(com.vaadin.flow.component.Key.ENTER, e -> sendMessage());
 
+        sendButton.setText(getTranslation("chat.sendButton"));
         sendButton.addClickListener(e -> sendMessage());
 
         HorizontalLayout inputBar = new HorizontalLayout(input, sendButton);
@@ -88,9 +92,14 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
     }
 
     @Override
+    public String getPageTitle() {
+        return getTranslation("chat.pageTitle");
+    }
+
+    @Override
     public void setParameter(BeforeEvent event, @OptionalParameter Integer parameter) {
         if (parameter == null) {
-            Notification.show("Geçersiz talep.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.invalidRequest"), 3000, Notification.Position.MIDDLE);
             return;
         }
         this.requestId = parameter;
@@ -105,13 +114,13 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         currentUser = userRepository.findByEmail(email).orElse(null);
 
         if (currentUser == null || requestId == null) {
-            Notification.show("Sohbet açılamadı.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.unableToOpen"), 3000, Notification.Position.MIDDLE);
             return;
         }
 
         currentRequest = requestRepository.findById(requestId).orElse(null);
         if (currentRequest == null) {
-            Notification.show("Talep bulunamadı.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.notFound"), 3000, Notification.Position.MIDDLE);
             return;
         }
 
@@ -123,7 +132,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
                     || currentUser.getRole().name().equals("ADMIN"));
 
         if (!isOwner && !isStaff) {
-            Notification.show("Bu sohbete erişim yetkiniz yok.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.unauthorized"), 3000, Notification.Position.MIDDLE);
             return;
         }
 
@@ -215,7 +224,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         infoIcon.setColor("#55f7cf"); 
         infoIcon.setSize("18px");
         
-        Span title = new Span("Talep Konusu: " + request.getTitle());
+        Span title = new Span(getTranslation("chat.card.subject") + ": " + request.getTitle());
         title.getStyle()
             .set("color", "#E2E8F0")
             .set("font-weight", "bold")
@@ -240,7 +249,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
             return;
         }
         if (otherPartyId == null) {
-            Notification.show("Karşı taraf belirlenemedi.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.otherPartyNotFound"), 3000, Notification.Position.MIDDLE);
             return;
         }
         try {
@@ -250,7 +259,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
 
             input.clear();
         } catch (Exception e) {
-            Notification.show("Mesaj gönderilemedi: " + e.getMessage(), 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("chat.error.sendFailed") + e.getMessage(), 3000, Notification.Position.MIDDLE);
         }
     }
 }

@@ -12,6 +12,7 @@ import com.example.base.entity.WorkflowEntity;
 import com.example.base.repository.RequestRepository;
 import com.example.base.repository.WorkflowRepository;
 import com.example.base.service.NotificationService;
+import com.example.base.service.SettingsService;
 import com.example.base.service.SystemLogService;
 import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.badge.Badge;
@@ -21,6 +22,8 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.HeaderRow;
+import com.vaadin.flow.component.grid.dataview.GridListDataView;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -31,30 +34,39 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.textfield.TextFieldVariant;
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "programmer-paneli", layout = MainLayout.class)
 @RolesAllowed("PROGRAMMER") 
-public class ProgrammerDashboardView extends VerticalLayout {
+public class ProgrammerDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final WorkflowRepository workflowRepository;
     private final RequestRepository requestRepository;
     private final NotificationService notificationService;
     private final SystemLogService systemLogService;
+    private final SettingsService settingsService;
 
     private final Grid<WorkflowEntity> grid = new Grid<>(WorkflowEntity.class, false);
     private final Dialog detailDialog = new Dialog();
+    private GridListDataView<WorkflowEntity> dataView;
+    private final WorkflowFilter workflowFilter = new WorkflowFilter();
 
     public ProgrammerDashboardView(WorkflowRepository workflowRepository, 
-                                  RequestRepository requestRepository,
-                                  NotificationService notificationService, 
-                                  SystemLogService systemLogService) {
+                                   RequestRepository requestRepository,
+                                   NotificationService notificationService, 
+                                   SystemLogService systemLogService,
+                                   SettingsService settingsService) {
         this.workflowRepository = workflowRepository;
         this.requestRepository = requestRepository;
         this.notificationService = notificationService;
         this.systemLogService = systemLogService;
+        this.settingsService = settingsService;
 
         setSizeFull();
         setPadding(true);
@@ -89,15 +101,20 @@ public class ProgrammerDashboardView extends VerticalLayout {
         refreshGrid();
     }
 
+    @Override
+    public String getPageTitle() {
+        return getTranslation("programmer.pageTitle");
+    }
+
     private Div buildHeader() {
         Div header = new Div();
         header.setWidthFull();
         header.getStyle().set("flex-shrink", "0");
 
-        H2 title = new H2("Programmer Görev Paneli");
+        H2 title = new H2(getTranslation("programmer.heading"));
         title.getStyle().set("margin", "0 0 4px 0").set("color", "var(--lumo-header-text-color)");
 
-        Paragraph subtitle = new Paragraph("PO tarafından onaylanıp Backlog'a atılan işleri buradan takip edip sonuçlandırın.");
+        Paragraph subtitle = new Paragraph(getTranslation("programmer.subtitle"));
         subtitle.getStyle().set("margin", "0").set("color", "var(--lumo-secondary-text-color)");
 
         header.add(title, subtitle);
@@ -105,37 +122,48 @@ public class ProgrammerDashboardView extends VerticalLayout {
     }
 
     private void configureGrid() {
-        grid.addColumn(workflow -> workflow.getRequest() != null ? workflow.getRequest().getRequestId() : "-")
-                .setHeader("Talep ID").setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<WorkflowEntity> idCol = grid.addColumn(workflow -> workflow.getRequest() != null ? workflow.getRequest().getRequestId() : "-")
+                .setHeader(getTranslation("programmer.grid.id")).setAutoWidth(true).setFlexGrow(0);
 
-        grid.addColumn(workflow -> workflow.getRequest() != null ? workflow.getRequest().getTitle() : "Bilinmiyor")
-                .setHeader("Görev Başlığı").setFlexGrow(2);
+        Grid.Column<WorkflowEntity> titleCol = grid.addColumn(workflow -> workflow.getRequest() != null ? workflow.getRequest().getTitle() : getTranslation("home.unknown"))
+                .setHeader(getTranslation("programmer.grid.title")).setFlexGrow(2);
 
         grid.addColumn(workflow -> {
             if (workflow.getAssignedAt() != null) {
                 return workflow.getAssignedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
             }
             return "-";
-        }).setHeader("Görevlendirme Tarihi").setAutoWidth(true);
+        }).setHeader(getTranslation("programmer.grid.assignedAt")).setAutoWidth(true);
 
         grid.addComponentColumn(this::createPriorityBadge)
-                .setHeader("Öncelik").setAutoWidth(true);
+                .setHeader(getTranslation("programmer.grid.priority")).setAutoWidth(true);
 
         grid.addComponentColumn(this::createActionColumn)
-                .setHeader("Durum Güncelle").setAutoWidth(true).setFlexGrow(1);
+                .setHeader(getTranslation("programmer.grid.statusUpdate")).setAutoWidth(true).setFlexGrow(1);
                 
         grid.addComponentColumn(workflow -> {
-            Button detailBtn = new Button("Detay Oku", VaadinIcon.INFO_CIRCLE.create());
+            Button detailBtn = new Button(getTranslation("programmer.btn.detail"), VaadinIcon.INFO_CIRCLE.create());
             detailBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
             detailBtn.addClickListener(e -> showDetails(workflow));
             return detailBtn;
-        }).setHeader("İçerik").setAutoWidth(true);
+        }).setHeader(getTranslation("programmer.grid.content")).setAutoWidth(true);
 
-        // BURADA DEĞİŞİKLİK YAPILDI: WorkflowEntity üzerinden SLA rozeti çağrılıyor
-        grid.addComponentColumn(this::createSlaBadge).setHeader("SLA Durumu").setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createSlaBadge).setHeader(getTranslation("programmer.grid.sla")).setAutoWidth(true).setFlexGrow(0);
+
+        TextField searchField = new TextField();
+        searchField.setPlaceholder(getTranslation("programmer.filter.searchPlaceholder"));
+        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.setClearButtonVisible(true);
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
+        searchField.setWidthFull();
+        searchField.addValueChangeListener(e -> workflowFilter.setSearchTerm(e.getValue()));
+
+        HeaderRow headerRow = grid.appendHeaderRow();
+        headerRow.getCell(idCol).setComponent(searchField);
+        headerRow.getCell(titleCol).setComponent(new Span());
     }
 
-    // BURADA DEĞİŞİKLİK YAPILDI: Parametre WorkflowEntity olarak değiştirildi
     private Badge createSlaBadge(WorkflowEntity workflow) {
         RequestEntity request = workflow.getRequest();
         
@@ -144,28 +172,28 @@ public class ProgrammerDashboardView extends VerticalLayout {
         }
 
         if ("KAPATILDI".equals(request.getStatus())) {
-            Badge closedBadge = new Badge("Tamamlandı");
+            Badge closedBadge = new Badge(getTranslation("requests.sla.completed"));
             closedBadge.addThemeVariants(BadgeVariant.CONTRAST); 
             return closedBadge;
         }
 
         long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
 
-        long slaLimitHours = 24; 
-        long warningLimitHours = (long) (slaLimitHours * 0.75);
+        long slaLimitHours = settingsService.getSlaLimitHours();
+        long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
 
         if (hoursElapsed >= slaLimitHours) {
-            Badge ihlalBadge = new Badge("İHLAL (" + hoursElapsed + "s)");
+            Badge ihlalBadge = new Badge(getTranslation("requests.sla.violated") + " (" + hoursElapsed + "s)");
             ihlalBadge.addThemeVariants(BadgeVariant.ERROR);
-            ihlalBadge.getElement().setProperty("title", "SLA Süresi Aşıldı!");
+            ihlalBadge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
             return ihlalBadge;
         } else if (hoursElapsed >= warningLimitHours) {
-            Badge uyariBadge = new Badge("YAKLAŞIYOR (" + hoursElapsed + "s)");
+            Badge uyariBadge = new Badge(getTranslation("requests.sla.warning") + " (" + hoursElapsed + "s)");
             uyariBadge.addThemeVariants(BadgeVariant.WARNING);
-            uyariBadge.getElement().setProperty("title", "SLA İhlaline Az Kaldı!");
+            uyariBadge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
             return uyariBadge;
         } else {
-            Badge normalBadge = new Badge("NORMAL (" + hoursElapsed + "s)");
+            Badge normalBadge = new Badge(getTranslation("requests.sla.normal") + " (" + hoursElapsed + "s)");
             normalBadge.addThemeVariants(BadgeVariant.SUCCESS);
             return normalBadge;
         }
@@ -176,20 +204,20 @@ public class ProgrammerDashboardView extends VerticalLayout {
         if (workflow.getRequest() != null && workflow.getRequest().getPrioritization() != null) {
             int score = workflow.getRequest().getPrioritization().getPriorityScore();
             if (score >= 999) {
-                badge.setText("ACİL/GÜVENLİK");
+                badge.setText(getTranslation("programmer.priority.urgent"));
                 badge.getElement().getThemeList().add("badge error");
             } else if (score >= 100) {
-                badge.setText("KRİTİK");
+                badge.setText(getTranslation("programmer.priority.critical"));
                 badge.getElement().getThemeList().add("badge error primary");
             } else if (score >= 50) {
-                badge.setText("YÜKSEK");
+                badge.setText(getTranslation("programmer.priority.high"));
                 badge.getElement().getThemeList().add("badge warning");
             } else {
-                badge.setText("NORMAL");
+                badge.setText(getTranslation("programmer.priority.normal"));
                 badge.getElement().getThemeList().add("badge success");
             }
         } else {
-            badge.setText("BELİRSİZ");
+            badge.setText(getTranslation("programmer.priority.unknown"));
             badge.getElement().getThemeList().add("badge contrast");
         }
         return badge;
@@ -233,13 +261,13 @@ public class ProgrammerDashboardView extends VerticalLayout {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             String devEmail = (auth != null) ? auth.getName() : "";
             
-            systemLogService.log("Programmer (" + devEmail + ") Görev ID: " + workflow.getTaskId() + " durumunu güncelledi: " + newStatus); 
+            systemLogService.log(getTranslation("programmer.log.updated") + " (" + devEmail + ") " + getTranslation("programmer.log.taskId") + ": " + workflow.getTaskId() + " " + getTranslation("programmer.log.status") + ": " + newStatus); 
             if (request != null && request.getCustomer() != null) {
-                String notifMessage = "Talebinizin yazılım süreci güncellendi. Yeni durum: " + newStatus;
-                notificationService.notifyUser(request.getCustomer().getUserId(), "Yazılım Süreci", notifMessage);
+                String notifMessage = getTranslation("programmer.notif.message") + " " + newStatus;
+                notificationService.notifyUser(request.getCustomer().getUserId(), getTranslation("programmer.notif.title"), notifMessage);
             }
 
-            Notification.show("Durum başarıyla güncellendi!", 3000, Notification.Position.TOP_CENTER)
+            Notification.show(getTranslation("programmer.notif.success"), 3000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             
             refreshGrid();
@@ -252,7 +280,7 @@ public class ProgrammerDashboardView extends VerticalLayout {
 
     private void showDetails(WorkflowEntity workflow) {
         detailDialog.removeAll();
-        detailDialog.setHeaderTitle("Görev Detayları");
+        detailDialog.setHeaderTitle(getTranslation("programmer.dialog.title"));
         detailDialog.setWidth("500px");
 
         VerticalLayout content = new VerticalLayout();
@@ -260,10 +288,10 @@ public class ProgrammerDashboardView extends VerticalLayout {
         content.setSpacing(true);
 
         if (workflow.getRequest() != null) {
-            Span title = new Span("Başlık: " + workflow.getRequest().getTitle());
+            Span title = new Span(getTranslation("programmer.dialog.titleLabel") + ": " + workflow.getRequest().getTitle());
             title.getStyle().set("font-weight", "bold");
             
-            TextArea desc = new TextArea("Sorun / İstek Detayı");
+            TextArea desc = new TextArea(getTranslation("programmer.dialog.descLabel"));
             desc.setValue(workflow.getRequest().getDescription() != null ? workflow.getRequest().getDescription() : "");
             desc.setReadOnly(true);
             desc.setWidthFull();
@@ -271,10 +299,10 @@ public class ProgrammerDashboardView extends VerticalLayout {
             
             content.add(title, desc);
         } else {
-            content.add(new Span("Bu göreve bağlı detay bulunamadı."));
+            content.add(new Span(getTranslation("programmer.dialog.noDetail")));
         }
 
-        Button closeBtn = new Button("Kapat", e -> detailDialog.close());
+        Button closeBtn = new Button(getTranslation("requests.btn.close"), e -> detailDialog.close());
         detailDialog.getFooter().add(closeBtn);
         
         detailDialog.add(content);
@@ -282,6 +310,35 @@ public class ProgrammerDashboardView extends VerticalLayout {
     }
 
     private void refreshGrid() {
-        grid.setItems(workflowRepository.findAllWithRequests()); 
+        dataView = grid.setItems(workflowRepository.findAllWithRequests());
+        workflowFilter.setDataView(dataView);
+    }
+    
+    private static class WorkflowFilter {
+        private GridListDataView<WorkflowEntity> dataView;
+        private String searchTerm = "";
+
+        public void setDataView(GridListDataView<WorkflowEntity> dataView) {
+            this.dataView = dataView;
+            this.dataView.addFilter(this::test);
+        }
+
+        public void setSearchTerm(String searchTerm) {
+            this.searchTerm = searchTerm != null ? searchTerm.toLowerCase().trim() : "";
+            if (dataView != null) dataView.refreshAll();
+        }
+
+        public boolean test(WorkflowEntity workflow) {
+            if (searchTerm.isEmpty()) return true;
+
+            RequestEntity request = workflow.getRequest();
+            if (request == null) return false;
+
+            boolean inTitle = request.getTitle() != null && request.getTitle().toLowerCase().contains(searchTerm);
+            boolean inDesc = request.getDescription() != null && request.getDescription().toLowerCase().contains(searchTerm);
+            boolean inId = String.valueOf(request.getRequestId()).contains(searchTerm);
+
+            return inTitle || inDesc || inId;
+        }
     }
 }

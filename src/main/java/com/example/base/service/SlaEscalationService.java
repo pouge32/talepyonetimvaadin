@@ -25,10 +25,8 @@ public class SlaEscalationService {
         this.systemLogService = systemLogService;
     }
 
-    // Her 30 dakikada bir otomatik çalışır (milisaniye cinsinden)
     @Scheduled(fixedRate = 1800000) 
     public void checkSlaViolations() {
-        // Kapanmamış tüm talepleri veritabanından çek
         List<RequestEntity> openRequests = requestRepository.findAll().stream()
                 .filter(req -> !"KAPATILDI".equals(req.getStatus()))
                 .toList();
@@ -39,16 +37,13 @@ public class SlaEscalationService {
             if (request.getCreatedAt() != null) {
                 long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), now);
 
-                long slaLimit = 24; // Limit (Saat)
-                long warningLimit = 18; // Uyarı Sınırı (Saat)
+                long slaLimit = 24; 
+                long warningLimit = 18; 
 
-                // 1. Durum: İhlal Gerçekleştiyse ve loglara düşmediyse
                 if (hoursElapsed == slaLimit) {
                     systemLogService.log("OTOMATİK ALARM: Talep ID " + request.getRequestId() + " için SLA süresi aşıldı! (" + slaLimit + " Saat)");
                     
-                    // TODO: Gerekirse burada notificationService.notifyUser(adminId, ...) ile admin'e bildirim atılabilir.
                 } 
-                // 2. Durum: İhlale çok yaklaştıysa
                 else if (hoursElapsed == warningLimit) {
                     systemLogService.log("SLA UYARISI: Talep ID " + request.getRequestId() + " için SLA ihlaline yaklaşıldı. Geçen süre: " + hoursElapsed + " Saat.");
                 }

@@ -6,7 +6,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import com.example.base.repository.RequestRepository;
 import com.example.base.ui.MainScreen.MainLayout;
@@ -21,27 +20,36 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "destek-performans", layout = MainLayout.class)
 @RolesAllowed("HELPDESK")
-public class HelpdeskDashboardView extends VerticalLayout {
+public class HelpdeskDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
     private final VerticalLayout dashboardContainer = new VerticalLayout(); 
     
-    private final DatePicker startDatePicker = new DatePicker("Başlangıç Tarihi");
-    private final DatePicker endDatePicker = new DatePicker("Bitiş Tarihi");
+    private final DatePicker startDatePicker = new DatePicker();
+    private final DatePicker endDatePicker = new DatePicker();
 
     public HelpdeskDashboardView(RequestRepository requestRepository) {
         this.requestRepository = requestRepository;
         
         UI.getCurrent().getPage().addJavaScript("https://cdn.jsdelivr.net/npm/apexcharts");
 
-        H3 title = new H3("Destek Ekibi Performans Raporu");
+        setSizeFull();
+        setPadding(true);
+        setSpacing(false);
+        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+
+        H3 title = new H3(getTranslation("helpdesk.dashboard.headerTitle"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
+
+        startDatePicker.setLabel(getTranslation("helpdesk.dashboard.startDate"));
+        endDatePicker.setLabel(getTranslation("helpdesk.dashboard.endDate"));
 
         HorizontalLayout filterLayout = new HorizontalLayout(startDatePicker, endDatePicker);
         filterLayout.setAlignItems(FlexComponent.Alignment.BASELINE);
@@ -52,6 +60,11 @@ public class HelpdeskDashboardView extends VerticalLayout {
         
         add(title, filterLayout, dashboardContainer);
         refreshDashboard();
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("helpdesk.dashboard.pageTitle");
     }
 
     private void refreshDashboard() {
@@ -67,13 +80,13 @@ public class HelpdeskDashboardView extends VerticalLayout {
         birinciSatir.setWidthFull();
         birinciSatir.getStyle().set("gap", "20px");
 
-        HorizontalLayout closedCard = createStatCard("Doğrudan Kapatılan", String.valueOf(closedCount), VaadinIcon.CHECK_CIRCLE.create(), successColor);
+        HorizontalLayout closedCard = createStatCard(getTranslation("helpdesk.dashboard.stat.directClosed"), String.valueOf(closedCount), VaadinIcon.CHECK_CIRCLE.create(), successColor);
         closedCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout forwardedCard = createStatCard("PO'ya Sevk Edilen", String.valueOf(forwardedCount), VaadinIcon.ARROW_RIGHT.create(), primaryColor);
+        HorizontalLayout forwardedCard = createStatCard(getTranslation("helpdesk.dashboard.stat.forwardedPo"), String.valueOf(forwardedCount), VaadinIcon.ARROW_RIGHT.create(), primaryColor);
         forwardedCard.getElement().getStyle().set("flex", "1");
 
-        VerticalLayout donutCard = createChartCard("Performans Dağılımı", "gercek-apex-grafik", "200px");
+        VerticalLayout donutCard = createChartCard(getTranslation("helpdesk.dashboard.chart.performanceDist"), "gercek-apex-grafik", "200px");
         donutCard.getElement().getStyle().set("flex", "1.2");
 
         birinciSatir.add(closedCard, forwardedCard, donutCard);
@@ -82,10 +95,10 @@ public class HelpdeskDashboardView extends VerticalLayout {
         ikinciSatir.setWidthFull();
         ikinciSatir.getStyle().set("gap", "20px");
 
-        VerticalLayout areaCard = createChartCard("Haftalık Talep Trendi", "area-chart-div", "250px");
+        VerticalLayout areaCard = createChartCard(getTranslation("helpdesk.dashboard.chart.weeklyTrend"), "area-chart-div", "250px");
         areaCard.getElement().getStyle().set("flex", "1.5"); 
 
-        VerticalLayout barCard = createChartCard("Kategori Bazlı Yoğunluk", "bar-chart-div", "250px");
+        VerticalLayout barCard = createChartCard(getTranslation("helpdesk.dashboard.chart.categoryDensity"), "bar-chart-div", "250px");
         barCard.getElement().getStyle().set("flex", "1");
 
         ikinciSatir.add(areaCard, barCard);
@@ -96,11 +109,11 @@ public class HelpdeskDashboardView extends VerticalLayout {
         try {
             List<Object[]> categoryData = requestRepository.countRequestsByCategory();
             for (Object[] row : categoryData) {
-                barCategories.add(row[0] != null ? row[0].toString() : "Belirsiz");
+                barCategories.add(row[0] != null ? row[0].toString() : getTranslation("helpdesk.dashboard.unknown"));
                 barData.add(((Number) row[1]).longValue());
             }
         } catch (Exception e) {
-            barCategories.addAll(List.of("Veri Yok"));
+            barCategories.addAll(List.of(getTranslation("helpdesk.dashboard.noData")));
             barData.addAll(List.of(0L));
         }
 
@@ -108,7 +121,7 @@ public class HelpdeskDashboardView extends VerticalLayout {
         List<Long> gelenTrend = new ArrayList<>();
         List<Long> cozulenTrend = new ArrayList<>();
         
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", new Locale("tr"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", UI.getCurrent().getLocale());
         LocalDate bugun = LocalDate.now();
 
         for (int i = 6; i >= 0; i--) {
@@ -130,22 +143,29 @@ public class HelpdeskDashboardView extends VerticalLayout {
         String color1 = (closedCount == 0 && forwardedCount == 0) ? "#E2E8F0" : successColor;
         String color2 = (closedCount == 0 && forwardedCount == 0) ? "#E2E8F0" : primaryColor;
 
+        String labelClosed = getTranslation("helpdesk.dashboard.legend.closed");
+        String labelForwarded = getTranslation("helpdesk.dashboard.legend.forwarded");
+        String seriesIncoming = getTranslation("helpdesk.dashboard.series.incoming");
+        String seriesResolved = getTranslation("helpdesk.dashboard.series.resolved");
+        String seriesRequestCount = getTranslation("helpdesk.dashboard.series.requestCount");
+
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
             "    var donutEl = document.querySelector('#gercek-apex-grafik');" +
-            "    if(donutEl) { donutEl.innerHTML = ''; new window.ApexCharts(donutEl, { series: [$0, $1], labels: ['Kapatılan', 'Sevk Edilen'], chart: { type: 'donut', height: 200, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(donutEl) { donutEl.innerHTML = ''; new window.ApexCharts(donutEl, { series: [$0, $1], labels: ['$4', '$5'], chart: { type: 'donut', height: 200, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    var areaEl = document.querySelector('#area-chart-div');" +
-            "    if(areaEl) { areaEl.innerHTML = ''; new window.ApexCharts(areaEl, { series: [{ name: 'Gelen Talepler', data: $4 }, { name: 'Çözülen Talepler', data: $5 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
+            "    if(areaEl) { areaEl.innerHTML = ''; new window.ApexCharts(areaEl, { series: [{ name: '$6', data: $8 }, { name: '$7', data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
 
             "    var barEl = document.querySelector('#bar-chart-div');" +
-            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: 'Talep Sayısı', data: $7 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $8 } }).render(); }" +
+            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: '$11', data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
             "  }" +
             "}, 500);", 
             donutClosed, donutForwarded, color1, color2,
+            labelClosed, labelForwarded, seriesIncoming, seriesResolved,
             gelenTrend, cozulenTrend, trendGunleri,
-            barData, barCategories
+            seriesRequestCount, barData, barCategories
         );
     }
 

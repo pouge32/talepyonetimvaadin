@@ -2,6 +2,7 @@ package com.example.base.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -33,14 +34,17 @@ public class SecurityConfig {
         }).formLogin(form -> form
             .failureHandler((request, response, exception) -> {
                 String errorCode = "invalid";
-                if (exception instanceof org.springframework.security.authentication.DisabledException) {
-                    String msg = exception.getMessage();
-                    if (msg != null && msg.contains("yasaklanmıştır")) {
+                String msg = exception.getMessage(); 
+
+                if (msg != null) {
+                    if (msg.contains("yasaklanmıştır")) {
                         errorCode = "banned";
-                    } else if (msg != null && msg.contains("onaylanmadı")) {
+                    } else if (msg.contains("onaylanmadı")) {
                         errorCode = "pending";
-                    } else if (msg != null && msg.contains("reddedilmiştir")) {
+                    } else if (msg.contains("reddedilmiştir")) {
                         errorCode = "rejected";
+                    } else if (msg.contains("kilitlenmiştir")) {
+                        errorCode = "locked";
                     }
                 }
                 response.sendRedirect("/login?error=" + errorCode);
@@ -60,8 +64,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UserRepository userRepository) {
+    public UserDetailsService userDetailsService(UserRepository userRepository, LoginAttemptService loginAttemptService) {
         return username -> {
+            
+            if (loginAttemptService.isBlocked(username)) {
+                throw new LockedException("Hesabınız ardışık hatalı girişler nedeniyle 15 dakika kilitlenmiştir.");
+            }
+
             UserEntity userEntity = userRepository.findByEmail(username)
                     .orElseThrow(() -> new UsernameNotFoundException("Kullanıcı bulunamadı: " + username));
 

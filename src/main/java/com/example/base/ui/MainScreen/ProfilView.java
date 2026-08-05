@@ -16,6 +16,7 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.FileBuffer;
@@ -36,7 +37,7 @@ import java.util.UUID;
 
 @Route(value = "profil", layout = MainLayout.class)
 @RolesAllowed(value = {"CUSTOMER", "HELPDESK", "PO", "ADMIN","PROGRAMMER"})
-public class ProfilView extends VerticalLayout {
+public class ProfilView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -49,11 +50,13 @@ public class ProfilView extends VerticalLayout {
         this.passwordEncoder = passwordEncoder;
         this.systemLogService = systemLogService;
 
+        setSizeFull();
         setSpacing(true);
         setPadding(true);
+        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
 
-        H2 title = new H2("Profil Ayarları");
-        Span subtitle = new Span("Bilgilerinizi güncelleyebilir ve yüzünüzün net göründüğü bir profil fotoğrafı yükleyebilirsiniz.");
+        H2 title = new H2(getTranslation("profile.title"));
+        Span subtitle = new Span(getTranslation("profile.subtitle"));
         subtitle.getStyle().set("color", "var(--lumo-secondary-text-color)");
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -73,30 +76,30 @@ public class ProfilView extends VerticalLayout {
             updateAvatarImage(avatar, currentUser.getProfilePhotoUrl()); 
         }
 
-        TextField nameField = new TextField("Ad Soyad");
+        TextField nameField = new TextField(getTranslation("profile.name"));
         nameField.setValue(currentUser != null ? currentUser.getNameSurname() : "");
 
-        EmailField emailField = new EmailField("E-Posta Adresi");
+        EmailField emailField = new EmailField(getTranslation("profile.email"));
         emailField.setValue(loggedInEmail);
-        emailField.setErrorMessage("Lütfen geçerli bir e-posta adresi giriniz");
+        emailField.setErrorMessage(getTranslation("profile.emailError"));
         emailField.setClearButtonVisible(true);
 
-        PasswordField passwordField = new PasswordField("Yeni Şifre");
-        passwordField.setPlaceholder("Değiştirmek istemiyorsanız boş bırakın");
+        PasswordField passwordField = new PasswordField(getTranslation("profile.newPassword"));
+        passwordField.setPlaceholder(getTranslation("profile.passwordPlaceholder"));
 
         FormLayout formLayout = new FormLayout();
         formLayout.add(nameField, emailField, passwordField);
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         formLayout.setMaxWidth("500px");
 
-        Span photoLabel = new Span("Profil Fotoğrafı (Lütfen yüzünüzün net bir şekilde göründüğü bir fotoğraf yükleyin):");
+        Span photoLabel = new Span(getTranslation("profile.photoLabel"));
         photoLabel.getStyle().set("font-weight", "bold").set("font-size", "var(--lumo-font-size-s)");
 
         FileBuffer buffer = new FileBuffer();
         Upload upload = new Upload(buffer);
         upload.setAcceptedFileTypes("image/jpeg", "image/png", "image/webp");
         upload.setMaxFileSize(5 * 1024 * 1024);
-        upload.setDropLabel(new Span("Fotoğrafı buraya sürükleyin veya seçin"));
+        upload.setDropLabel(new Span(getTranslation("profile.dropLabel")));
 
         upload.addSucceededListener(event -> {
             String originalFileName = event.getFileName();
@@ -114,11 +117,11 @@ public class ProfilView extends VerticalLayout {
 
                 newPhotoUrl = "/uploads/" + uniqueFileName;
 
-                Notification.show("Fotoğraf geçici olarak belleğe alındı. İşlemi tamamlamak için Kaydet'e basın.", 3000, Notification.Position.TOP_CENTER)
+                Notification.show(getTranslation("profile.notif.tempPhoto"), 3000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
             } catch (Exception ex) {
-                Notification.show("Fotoğraf kaydedilirken hata oluştu!", 3000, Notification.Position.TOP_CENTER)
+                Notification.show(getTranslation("profile.notif.photoError"), 3000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         });
@@ -126,10 +129,10 @@ public class ProfilView extends VerticalLayout {
         HorizontalLayout avatarLayout = new HorizontalLayout(avatar, upload);
         avatarLayout.setAlignItems(Alignment.CENTER);
 
-        Button saveButton = new Button("Değişiklikleri Kaydet", e -> {
+        Button saveButton = new Button(getTranslation("profile.saveButton"), e -> {
             if (currentUser != null) {
                 if (emailField.isInvalid()) {
-                    Notification.show("Lütfen geçerli bir e-posta adresi girin!", 3000, Notification.Position.TOP_CENTER)
+                    Notification.show(getTranslation("profile.notif.invalidEmail"), 3000, Notification.Position.TOP_CENTER)
                             .addThemeVariants(NotificationVariant.LUMO_ERROR);
                     return;
                 }
@@ -149,9 +152,9 @@ public class ProfilView extends VerticalLayout {
 
                 userRepository.save(currentUser);
 
-                systemLogService.log("Kullanıcı (" + loggedInEmail + ") profil bilgilerini güncelledi.");
+                systemLogService.log(getTranslation("profile.log.updated") + " (" + loggedInEmail + ") " + getTranslation("profile.log.updatedSuffix"));
 
-                Notification.show("Profil bilgileriniz başarıyla güncellendi.", 3000, Notification.Position.TOP_CENTER)
+                Notification.show(getTranslation("profile.notif.success"), 3000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 
                 passwordField.clear();
@@ -161,6 +164,11 @@ public class ProfilView extends VerticalLayout {
         saveButton.getStyle().set("margin-top", "20px");
 
         add(title, subtitle, formLayout, photoLabel, avatarLayout, saveButton);
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("profile.pageTitle");
     }
 
     private void updateAvatarImage(Avatar avatar, String photoUrl) {

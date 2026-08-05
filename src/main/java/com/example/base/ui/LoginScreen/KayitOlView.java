@@ -37,31 +37,31 @@ public class KayitOlView extends VerticalLayout {
         setAlignItems(FlexComponent.Alignment.CENTER);
         setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
 
-        H2 title = new H2("Yeni Müşteri Kaydı");
+        H2 title = new H2(getTranslation("register.title"));
 
-        TextField nameField = new TextField("Ad Soyad");
+        TextField nameField = new TextField(getTranslation("register.name"));
         nameField.setWidthFull();
 
-        EmailField emailField = new EmailField("E-Posta Adresi");
+        EmailField emailField = new EmailField(getTranslation("register.email"));
         emailField.setWidthFull();
 
-        PasswordField passwordField = new PasswordField("Şifre");
+        PasswordField passwordField = new PasswordField(getTranslation("register.password"));
         passwordField.setWidthFull();
 
-        Button submitButton = new Button("Kayıt Oluştur");
+        Button submitButton = new Button(getTranslation("register.submit"));
         submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submitButton.setWidthFull();
         
-        RouterLink loginLink = new RouterLink("Zaten üye misiniz? Giriş yapın", LoginView.class); 
+        RouterLink loginLink = new RouterLink(getTranslation("register.loginLink"), LoginView.class); 
 
         submitButton.addClickListener(e -> {
             if (nameField.isEmpty() || emailField.isEmpty() || passwordField.isEmpty()) {
-                Notification.show("Lütfen tüm alanları doldurun!", 3000, Notification.Position.TOP_CENTER);
+                Notification.show(getTranslation("register.error.emptyFields"), 3000, Notification.Position.TOP_CENTER);
                 return;
             }
 
             if (userRepository.findByEmail(emailField.getValue()).isPresent()) {
-                Notification error = Notification.show("Bu e-posta adresi zaten kayıtlı!", 3000, Notification.Position.TOP_CENTER);
+                Notification error = Notification.show(getTranslation("register.error.emailExists"), 3000, Notification.Position.TOP_CENTER);
                 error.addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
             }
@@ -78,9 +78,9 @@ public class KayitOlView extends VerticalLayout {
 
             userRepository.save(newUser);
 
-            systemLogService.log("Yeni müşteri kayıt başvurusu oluşturuldu: " + emailField.getValue());
+            systemLogService.log(getTranslation("register.log.created") + " " + emailField.getValue());
 
-            Notification success = Notification.show("Kayıt başarılı! Destek ekibi onayladıktan sonra giriş yapabilirsiniz.", 5000, Notification.Position.TOP_CENTER);
+            Notification success = Notification.show(getTranslation("register.success"), 5000, Notification.Position.TOP_CENTER);
             success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
             nameField.clear();

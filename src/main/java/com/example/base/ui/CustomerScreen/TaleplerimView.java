@@ -1,7 +1,9 @@
 package com.example.base.ui.CustomerScreen;
 
 import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.function.Consumer;
 
@@ -13,6 +15,7 @@ import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
 import com.example.base.service.ChatService;
 import com.example.base.service.RequestService;
+import com.example.base.service.SettingsService;
 import com.example.base.service.SystemLogService;
 import com.example.base.ui.Class.TalepChat;
 import com.example.base.ui.MainScreen.MainLayout;
@@ -22,7 +25,7 @@ import com.vaadin.flow.component.badge.BadgeVariant;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
-import com.vaadin.flow.component.datetimepicker.DateTimePicker;
+import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.HeaderRow;
@@ -35,6 +38,8 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.radiobutton.RadioGroupVariant;
@@ -42,6 +47,7 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 
@@ -49,23 +55,25 @@ import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "taleplerim", layout = MainLayout.class)
 @RolesAllowed(value = "CUSTOMER")
-public class TaleplerimView extends VerticalLayout {
+public class TaleplerimView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestService requestService;
     private final ChatService chatService;
     private final UserRepository userRepository;
     private final SystemLogService systemLogService;
     private final RequestRepository requestRepository;
+    private final SettingsService settingsService;
     private final Grid<RequestEntity> grid = new Grid<>(RequestEntity.class, false);
 
     public TaleplerimView(RequestService requestService, ChatService chatService, 
                           UserRepository userRepository, SystemLogService systemLogService,
-                          RequestRepository requestRepository) {
+                          RequestRepository requestRepository, SettingsService settingsService) {
         this.requestService = requestService;
         this.chatService = chatService;
         this.userRepository = userRepository;
         this.systemLogService = systemLogService;
         this.requestRepository = requestRepository;
+        this.settingsService = settingsService;
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = (auth != null) ? auth.getName() : "";
@@ -97,11 +105,16 @@ public class TaleplerimView extends VerticalLayout {
         grid.setWidthFull();
         grid.getStyle()
                 .set("flex-grow", "1")
-                .set("background-color", "#ffffff")
+                .set("background-color", "var(--lumo-base-color)")
                 .set("border-radius", "12px");
 
         mainContainer.add(buildPageHeader(), grid);
         add(mainContainer);
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("requests.pageTitle");
     }
 
     private Div buildPageHeader() {
@@ -109,10 +122,10 @@ public class TaleplerimView extends VerticalLayout {
         header.setWidthFull();
         header.getStyle().set("margin-bottom", "16px").set("flex-shrink", "0");
 
-        H2 heading = new H2("Taleplerim");
+        H2 heading = new H2(getTranslation("requests.heading"));
         heading.getStyle().set("margin", "0 0 2px 0").set("color", "var(--lumo-header-text-color)").set("font-size", "22px");
 
-        Paragraph subtitle = new Paragraph("Geçmişte oluşturduğunuz tüm talepleri listeleyebilir, durumlarını ve sohbet geçmişlerini takip edebilirsiniz.");
+        Paragraph subtitle = new Paragraph(getTranslation("requests.subtitle"));
         subtitle.getStyle()
                 .set("margin", "0")
                 .set("color", "var(--lumo-secondary-text-color)")
@@ -123,20 +136,40 @@ public class TaleplerimView extends VerticalLayout {
     }
 
     private void configureGrid() {
-        grid.addColumn(RequestEntity::getRequestId).setHeader("ID").setAutoWidth(true);
-        Grid.Column<RequestEntity> titleColumn = grid.addColumn(RequestEntity::getTitle).setHeader("Başlık");
-        Grid.Column<RequestEntity> descColumn = grid.addColumn(RequestEntity::getDescription).setHeader("Detay");
+        Grid.Column<RequestEntity> idColumn = grid.addColumn(RequestEntity::getRequestId).setHeader(getTranslation("requests.grid.id")).setAutoWidth(true).setFlexGrow(0);
         
-        grid.addComponentColumn(this::createScreenshotButton)
-                .setHeader("Ekran Görüntüsü").setAutoWidth(true).setFlexGrow(0);
+        // Arama kutusunun rahat sığması için flexGrow 2 yapıldı
+        Grid.Column<RequestEntity> titleColumn = grid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("requests.grid.title")).setFlexGrow(2);
+        Grid.Column<RequestEntity> descColumn = grid.addColumn(RequestEntity::getDescription).setHeader(getTranslation("requests.grid.desc")).setFlexGrow(2);
+        
+        Grid.Column<RequestEntity> screenshotColumn = grid.addComponentColumn(this::createScreenshotButton)
+                .setHeader(getTranslation("requests.grid.screenshot")).setAutoWidth(true).setFlexGrow(0);
 
-        Grid.Column<RequestEntity> dateColumn = grid.addColumn(RequestEntity::getCreatedAt).setHeader("Oluşturulma Tarihi");
-        Grid.Column<RequestEntity> statusColumn = grid.addComponentColumn(this::createStatusBadge).setHeader("Durum").setAutoWidth(true);
+        Grid.Column<RequestEntity> dateColumn = grid.addColumn(request -> request.getCreatedAt() != null ? request.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "-")
+                .setHeader(getTranslation("requests.grid.createdAt")).setAutoWidth(true).setFlexGrow(0);
+                
+        Grid.Column<RequestEntity> statusColumn = grid.addComponentColumn(this::createStatusBadge).setHeader(getTranslation("requests.grid.status")).setAutoWidth(true).setFlexGrow(0);
 
-        grid.addComponentColumn(this::createChatButton).setHeader("Sohbet").setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<RequestEntity> actionsColumn = grid.addComponentColumn(request -> {
+            HorizontalLayout actions = new HorizontalLayout();
+            actions.getThemeList().add("spacing-s");
+            actions.setAlignItems(FlexComponent.Alignment.CENTER);
 
-        // MÜŞTERİ MEMNUNİYETİ KOLONU
-        grid.addComponentColumn(this::createRatingColumn).setHeader("Değerlendirme").setAutoWidth(true).setFlexGrow(0);
+            actions.add(createChatButton(request));
+
+            if ("KAPATILDI".equals(request.getStatus())) {
+                Button reopenBtn = new Button(getTranslation("requests.btn.reopen"), VaadinIcon.REFRESH.create());
+                reopenBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+                reopenBtn.getElement().setProperty("title", getTranslation("requests.tooltip.reopen"));
+                reopenBtn.addClickListener(e -> openReopenDialog(request));
+                actions.add(reopenBtn);
+            }
+
+            return actions;
+        }).setHeader(getTranslation("requests.grid.actions")).setAutoWidth(true).setFlexGrow(0);
+
+        Grid.Column<RequestEntity> ratingColumn = grid.addComponentColumn(this::createRatingColumn).setHeader(getTranslation("requests.grid.rating")).setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<RequestEntity> slaColumn = grid.addComponentColumn(this::createSlaBadge).setHeader(getTranslation("requests.grid.sla")).setAutoWidth(true).setFlexGrow(0);
 
         GridListDataView<RequestEntity> dataView = grid.setItems(requestService.getMyRequestsForCurrentUser());
         RequestFilter requestFilter = new RequestFilter(dataView);
@@ -146,49 +179,96 @@ public class TaleplerimView extends VerticalLayout {
         requestFilter.setStartDate(oneWeekAgo);
         requestFilter.setEndDate(now);
 
+        TextField searchField = new TextField();
+        searchField.setPlaceholder(getTranslation("requests.filter.searchPlaceholder"));
+        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.setClearButtonVisible(true);
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
+        searchField.setWidthFull();
+        searchField.addValueChangeListener(e -> requestFilter.setSearchTerm(e.getValue()));
+
         HeaderRow headerRow = grid.appendHeaderRow();
-
-        headerRow.getCell(titleColumn).setComponent(
-                createFilterHeader("Başlığa göre ara...", requestFilter::setTitle));
         
-        headerRow.getCell(descColumn).setComponent(
-                createFilterHeader("Detaya göre ara...", requestFilter::setDescription));
-        
-        headerRow.getCell(dateColumn).setComponent(
-                createDateRangeFilterHeader(requestFilter));
-        
-        headerRow.getCell(statusColumn).setComponent(
-                createStatusFilterHeader(requestFilter::setStatus));
+        // Hata yaratan join() metodu kaldırıldı. Sütunlar kendi hizasında bırakıldı.
+        headerRow.getCell(idColumn).setComponent(new Span());
+        headerRow.getCell(titleColumn).setComponent(searchField);
+        headerRow.getCell(descColumn).setComponent(new Span());
+        headerRow.getCell(screenshotColumn).setComponent(new Span());
+        headerRow.getCell(dateColumn).setComponent(createDateRangeFilterHeader(requestFilter));
+        headerRow.getCell(statusColumn).setComponent(createStatusFilterHeader(requestFilter::setStatus));
+        headerRow.getCell(actionsColumn).setComponent(new Span());
+        headerRow.getCell(ratingColumn).setComponent(new Span());
+        headerRow.getCell(slaColumn).setComponent(new Span());
+    }
 
-        grid.addComponentColumn(this::createSlaBadge).setHeader("SLA Durumu").setAutoWidth(true).setFlexGrow(0);
+    private void openReopenDialog(RequestEntity request) {
+        Dialog dialog = new Dialog();
+        dialog.setHeaderTitle(getTranslation("requests.dialog.reopenTitle") + " (#" + request.getRequestId() + ")");
+        dialog.setWidth("500px");
 
+        TextArea reasonArea = new TextArea(getTranslation("requests.dialog.reasonLabel"));
+        reasonArea.setWidthFull();
+        reasonArea.setPlaceholder(getTranslation("requests.dialog.reasonPlaceholder"));
+        reasonArea.setRequired(true);
+
+        Button confirmBtn = new Button(getTranslation("requests.btn.reopenConfirm"), e -> {
+            if (reasonArea.isEmpty()) {
+                Notification.show(getTranslation("requests.notification.reasonRequired"), 3000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                return;
+            }
+
+            try {
+                requestService.reopenRequest(request.getRequestId(), reasonArea.getValue());
+                
+                Notification.show(getTranslation("requests.notification.reopened"), 4000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                
+                dialog.close();
+                refreshGrid();
+            } catch (Exception ex) {
+                Notification.show("Hata: " + ex.getMessage(), 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        confirmBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
+
+        Button cancelBtn = new Button(getTranslation("requests.btn.cancel"), e -> dialog.close());
+
+        dialog.add(new Paragraph(getTranslation("requests.dialog.reopenDesc")), reasonArea);
+        dialog.getFooter().add(confirmBtn, cancelBtn);
+        dialog.open();
+    }
+
+    private void refreshGrid() {
+        grid.setItems(requestService.getMyRequestsForCurrentUser());
     }
 
     private Badge createSlaBadge(RequestEntity request) {
         if ("KAPATILDI".equals(request.getStatus())) {
-            Badge closedBadge = new Badge("Tamamlandı");
+            Badge closedBadge = new Badge(getTranslation("requests.sla.completed"));
             closedBadge.addThemeVariants(BadgeVariant.CONTRAST); 
             return closedBadge;
         }
 
         long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
 
-        
-        long slaLimitHours = 24; 
-        long warningLimitHours = (long) (slaLimitHours * 0.75);
+        long slaLimitHours = settingsService.getSlaLimitHours();
+        long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
 
         if (hoursElapsed >= slaLimitHours) {
-            Badge ihlalBadge = new Badge("İHLAL (" + hoursElapsed + "s)");
+            Badge ihlalBadge = new Badge(getTranslation("requests.sla.violated") + " (" + hoursElapsed + "s)");
             ihlalBadge.addThemeVariants(BadgeVariant.ERROR);
-            ihlalBadge.getElement().setProperty("title", "SLA Süresi Aşıldı!");
+            ihlalBadge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
             return ihlalBadge;
         } else if (hoursElapsed >= warningLimitHours) {
-            Badge uyariBadge = new Badge("YAKLAŞIYOR (" + hoursElapsed + "s)");
+            Badge uyariBadge = new Badge(getTranslation("requests.sla.warning") + " (" + hoursElapsed + "s)");
             uyariBadge.addThemeVariants(BadgeVariant.WARNING);
-            uyariBadge.getElement().setProperty("title", "SLA İhlaline Az Kaldı!");
+            uyariBadge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
             return uyariBadge;
         } else {
-            Badge normalBadge = new Badge("NORMAL (" + hoursElapsed + "s)");
+            Badge normalBadge = new Badge(getTranslation("requests.sla.normal") + " (" + hoursElapsed + "s)");
             normalBadge.addThemeVariants(BadgeVariant.SUCCESS);
             return normalBadge;
         }
@@ -202,7 +282,7 @@ public class TaleplerimView extends VerticalLayout {
                 pointBadge.getStyle().set("font-weight", "bold");
                 return pointBadge;
             } else {
-                Button rateBtn = new Button("Puan Ver", VaadinIcon.STAR.create());
+                Button rateBtn = new Button(getTranslation("requests.btn.rate"), VaadinIcon.STAR.create());
                 rateBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
                 rateBtn.addClickListener(e -> openRatingDialog(request));
                 return rateBtn;
@@ -213,73 +293,66 @@ public class TaleplerimView extends VerticalLayout {
 
     private void openRatingDialog(RequestEntity request) {
         Dialog ratingDialog = new Dialog();
-        ratingDialog.setHeaderTitle("Talebiniz Kapatıldı. Bizi Değerlendirin!");
+        ratingDialog.setHeaderTitle(getTranslation("requests.dialog.ratingTitle"));
         ratingDialog.setWidth("400px");
 
         VerticalLayout layout = new VerticalLayout();
 
         RadioButtonGroup<Integer> scoreGroup = new RadioButtonGroup<>();
-        scoreGroup.setLabel("Hizmetimizden ne kadar memnun kaldınız?");
+        scoreGroup.setLabel(getTranslation("requests.dialog.scoreLabel"));
         scoreGroup.setItems(1, 2, 3, 4, 5);
         scoreGroup.addThemeVariants(RadioGroupVariant.LUMO_VERTICAL);
         
-        TextArea commentArea = new TextArea("Yorumunuz (İsteğe Bağlı)");
-        commentArea.setPlaceholder("Bize nasıl daha iyi olabileceğimizi söyleyin...");
+        TextArea commentArea = new TextArea(getTranslation("requests.dialog.commentLabel"));
+        commentArea.setPlaceholder(getTranslation("requests.dialog.commentPlaceholder"));
         commentArea.setWidthFull();
 
         layout.add(scoreGroup, commentArea);
         ratingDialog.add(layout);
 
-        Button submitBtn = new Button("Değerlendirmeyi Gönder", event -> {
+        Button submitBtn = new Button(getTranslation("requests.btn.submitRating"), event -> {
             if (scoreGroup.getValue() == null) {
-                Notification.show("Lütfen 1 ile 5 arasında bir puan seçin.", 3000, Notification.Position.MIDDLE)
+                Notification.show(getTranslation("requests.notification.scoreRequired"), 3000, Notification.Position.MIDDLE)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
             }
 
-            request.setSatisfactionScore(scoreGroup.getValue());
-            request.setSatisfactionComment(commentArea.getValue());
-            requestRepository.save(request);
+            requestService.rateRequest(request.getRequestId(), scoreGroup.getValue(), commentArea.getValue());
 
-            systemLogService.log("Talep ID: " + request.getRequestId() + " müşteri tarafından " + scoreGroup.getValue() + " yıldız ile değerlendirildi.");
-
-            Notification.show("Değerlendirmeniz için teşekkür ederiz!", 3000, Notification.Position.TOP_CENTER)
+            Notification.show(getTranslation("requests.notification.rated"), 3000, Notification.Position.TOP_CENTER)
                     .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
             
             ratingDialog.close();
-            // Filtreleri bozmadan sadece ilgili satırı günceller
-            grid.getDataProvider().refreshItem(request); 
+            refreshGrid();
         });
         submitBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        Button cancelBtn = new Button("Kapat", e -> ratingDialog.close());
+        Button cancelBtn = new Button(getTranslation("requests.btn.close"), e -> ratingDialog.close());
 
         ratingDialog.getFooter().add(submitBtn, cancelBtn);
         ratingDialog.open();
     }
 
-    // --- MÜŞTERİ MEMNUNİYETİ METOTLARI BİTİŞ ---
-
     private Component createScreenshotButton(RequestEntity request) {
         boolean hasScreenshot = request.getScreenshotData() != null && request.getScreenshotData().length > 0;
 
-        Button button = new Button(hasScreenshot ? "Görüntüle" : "Yok", VaadinIcon.PICTURE.create());
+        Button button = new Button(hasScreenshot ? getTranslation("requests.btn.view") : getTranslation("requests.btn.none"), VaadinIcon.PICTURE.create());
         button.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
 
         if (!hasScreenshot) {
             button.setEnabled(false);
-            button.getElement().setProperty("title", "Bu talebe ekran görüntüsü eklenmemiş");
+            button.getElement().setProperty("title", getTranslation("requests.tooltip.noScreenshot"));
             return button;
         }
 
-        button.getElement().setProperty("title", "Ekran görüntüsünü büyük görüntüle");
+        button.getElement().setProperty("title", getTranslation("requests.tooltip.viewScreenshot"));
         button.addClickListener(e -> openScreenshotDialog(request));
         return button;
     }
 
     private void openScreenshotDialog(RequestEntity request) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Ekran Görüntüsü - Talep #" + request.getRequestId());
+        dialog.setHeaderTitle(getTranslation("requests.dialog.screenshotTitle") + " #" + request.getRequestId());
         dialog.setWidth("640px");
         dialog.setCloseOnOutsideClick(true);
 
@@ -294,7 +367,7 @@ public class TaleplerimView extends VerticalLayout {
                 .set("object-fit", "contain")
                 .set("border-radius", "8px");
 
-        Button closeBtn = new Button("Kapat", e -> dialog.close());
+        Button closeBtn = new Button(getTranslation("requests.btn.close"), e -> dialog.close());
 
         dialog.add(image);
         dialog.getFooter().add(closeBtn);
@@ -302,14 +375,13 @@ public class TaleplerimView extends VerticalLayout {
     }
 
     private Component createChatButton(RequestEntity request) {
-        Button chatButton = new Button("Sohbet", VaadinIcon.CHAT.create());
+        Button chatButton = new Button(getTranslation("requests.btn.chat"), VaadinIcon.CHAT.create());
         chatButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
 
         com.vaadin.flow.component.html.Div container = new com.vaadin.flow.component.html.Div(chatButton);
         container.getStyle().set("position", "relative").set("display", "inline-block");
 
-        org.springframework.security.core.Authentication auth = 
-                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String email = (auth != null) ? auth.getName() : "";
         
         userRepository.findByEmail(email).ifPresent(currentUser -> {
@@ -337,42 +409,38 @@ public class TaleplerimView extends VerticalLayout {
         return container;
     }
 
-    private static Component createFilterHeader(String placeholder, Consumer<String> filterChangeConsumer) {
-        TextField textField = new TextField();
-        textField.setPlaceholder(placeholder);
-        textField.setValueChangeMode(ValueChangeMode.EAGER);
-        textField.setClearButtonVisible(true);
-        textField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
-        textField.setWidthFull();
-        textField.addValueChangeListener(e -> filterChangeConsumer.accept(e.getValue()));
-        return textField;
-    }
-
-    private static Component createDateRangeFilterHeader(RequestFilter requestFilter) {
+    private Component createDateRangeFilterHeader(RequestFilter requestFilter) {
         VerticalLayout dateLayout = new VerticalLayout();
         dateLayout.setPadding(false);
         dateLayout.setSpacing(true);
 
-        DateTimePicker startPicker = new DateTimePicker("Başlangıç");
+        DatePicker startPicker = new DatePicker();
+        startPicker.setPlaceholder(getTranslation("requests.filter.startDate"));
         startPicker.setWidthFull();
-        startPicker.setValue(LocalDateTime.now().minusWeeks(1));
-        startPicker.getElement().executeJs("this.inputElement.setAttribute('readonly', true);");
-        startPicker.addValueChangeListener(e -> requestFilter.setStartDate(e.getValue()));
+        startPicker.setClearButtonVisible(true);
+        startPicker.setValue(LocalDate.now().minusWeeks(1));
+        startPicker.addValueChangeListener(e -> requestFilter.setStartDate(e.getValue() != null ? e.getValue().atStartOfDay() : null));
 
-        DateTimePicker endPicker = new DateTimePicker("Bitiş");
+        DatePicker endPicker = new DatePicker();
+        endPicker.setPlaceholder(getTranslation("requests.filter.endDate"));
         endPicker.setWidthFull();
-        endPicker.setValue(LocalDateTime.now());
-        endPicker.getElement().executeJs("this.inputElement.setAttribute('readonly', true);");
-        endPicker.addValueChangeListener(e -> requestFilter.setEndDate(e.getValue()));
+        endPicker.setClearButtonVisible(true);
+        endPicker.setValue(LocalDate.now());
+        endPicker.addValueChangeListener(e -> requestFilter.setEndDate(e.getValue() != null ? e.getValue().atTime(23, 59, 59) : null));
 
         dateLayout.add(startPicker, endPicker);
         return dateLayout;
     }
 
-    private static Component createStatusFilterHeader(Consumer<String> filterChangeConsumer) {
+    private Component createStatusFilterHeader(Consumer<String> filterChangeConsumer) {
         ComboBox<String> comboBox = new ComboBox<>();
-        comboBox.setItems("Yeni", "İncelemede", "İşleme Alındı", "KAPATILDI");
-        comboBox.setPlaceholder("Durum seç...");
+        comboBox.setItems(
+            getTranslation("requests.status.new"), 
+            getTranslation("requests.status.inReview"), 
+            getTranslation("requests.status.inProgress"), 
+            getTranslation("requests.status.closed")
+        );
+        comboBox.setPlaceholder(getTranslation("requests.filter.statusPlaceholder"));
         comboBox.setClearButtonVisible(true);
         comboBox.setWidthFull();
         comboBox.addValueChangeListener(e -> filterChangeConsumer.accept(e.getValue()));
@@ -382,8 +450,7 @@ public class TaleplerimView extends VerticalLayout {
     private static class RequestFilter {
         private final GridListDataView<RequestEntity> dataView;
 
-        private String title = "";
-        private String description = "";
+        private String searchTerm = "";
         private LocalDateTime startDate;
         private LocalDateTime endDate;
         private String status = "";
@@ -393,13 +460,8 @@ public class TaleplerimView extends VerticalLayout {
             this.dataView.addFilter(this::test);
         }
 
-        public void setTitle(String title) {
-            this.title = title != null ? title : "";
-            this.dataView.refreshAll();
-        }
-
-        public void setDescription(String description) {
-            this.description = description != null ? description : "";
+        public void setSearchTerm(String searchTerm) {
+            this.searchTerm = searchTerm != null ? searchTerm.toLowerCase().trim() : "";
             this.dataView.refreshAll();
         }
 
@@ -419,9 +481,14 @@ public class TaleplerimView extends VerticalLayout {
         }
 
         public boolean test(RequestEntity request) {
-            boolean matchesTitle = matches(request.getTitle(), title);
-            boolean matchesDesc = matches(request.getDescription(), description);
-            
+            boolean matchesSearch = true;
+            if (!searchTerm.isEmpty()) {
+                boolean inTitle = request.getTitle() != null && request.getTitle().toLowerCase().contains(searchTerm);
+                boolean inDesc = request.getDescription() != null && request.getDescription().toLowerCase().contains(searchTerm);
+                boolean inId = String.valueOf(request.getRequestId()).contains(searchTerm);
+                matchesSearch = inTitle || inDesc || inId;
+            }
+
             boolean matchesDate = true;
             if (request.getCreatedAt() != null) {
                 if (startDate != null && request.getCreatedAt().isBefore(startDate)) {
@@ -432,26 +499,20 @@ public class TaleplerimView extends VerticalLayout {
                 }
             }
 
-            String mappedStatus = switch (request.getStatus() != null ? request.getStatus() : "") {
-                case "NEW" -> "Yeni";
-                case "İncelemede" -> "İncelemede";
-                case "İş Akışına Dönüştü" -> "İşleme Alındı";
-                case "KAPATILDI" -> "KAPATILDI";
-                default -> request.getStatus();
-            };
-            boolean matchesStatus = status.isEmpty() || mappedStatus.equalsIgnoreCase(status);
+            String rawStatus = request.getStatus() != null ? request.getStatus() : "";
+            boolean matchesStatus = status.isEmpty() || rawStatus.equalsIgnoreCase(status) || mapRawStatus(rawStatus).equalsIgnoreCase(status);
 
-            return matchesTitle && matchesDesc && matchesDate && matchesStatus;
+            return matchesSearch && matchesDate && matchesStatus;
         }
 
-        private boolean matches(String value, String searchTerm) {
-            if (searchTerm == null || searchTerm.isEmpty()) {
-                return true;
-            }
-            if (value == null) {
-                return false;
-            }
-            return value.toLowerCase().contains(searchTerm.toLowerCase());
+        private String mapRawStatus(String status) {
+            return switch (status) {
+                case "NEW" -> "Yeni";
+                case "INCELEMEDE", "İncelemede" -> "İncelemede";
+                case "ONAYLANDI", "İş Akışına Dönüştü" -> "İşleme Alındı";
+                case "KAPATILDI" -> "KAPATILDI";
+                default -> status;
+            };
         }
     }
 
@@ -463,30 +524,29 @@ public class TaleplerimView extends VerticalLayout {
         switch (status) {
             case "NEW":
                 badge.addThemeVariants(BadgeVariant.CONTRAST);
-                tooltipText = "Ön İnceleme Bekliyor. Tahmini Değerlendirme: 1-2 İş Günü";
+                tooltipText = getTranslation("requests.tooltip.statusNew");
                 break;
             case "INCELEMEDE":
             case "İncelemede":
                 badge.addThemeVariants(BadgeVariant.WARNING);
-                tooltipText = "Ürün Yönetimi (PO) İncelemesinde. Tahmini Çözüm Süresi: 2-4 İş Günü";
+                tooltipText = getTranslation("requests.tooltip.statusInReview");
                 break;
             case "ONAYLANDI":
             case "İş Akışına Dönüştü":
                 badge.addThemeVariants(BadgeVariant.SUCCESS);
-                tooltipText = "Yazılım Ekibine Aktarıldı. Mevcut sprint eforuna göre kodlanacak.";
+                tooltipText = getTranslation("requests.tooltip.statusInProgress");
                 break;
             case "KAPATILDI":
                 badge.addThemeVariants(BadgeVariant.ERROR);
-                tooltipText = "Bu talep sonuçlandırılarak kapatılmıştır.";
+                tooltipText = getTranslation("requests.tooltip.statusClosed");
                 break;
             default:
                 badge.addThemeVariants(BadgeVariant.ERROR);
-                tooltipText = "Durum değerlendiriliyor.";
+                tooltipText = getTranslation("requests.tooltip.statusDefault");
                 break;
         }
 
         badge.getElement().setProperty("title", tooltipText);
-        
         badge.getStyle().set("cursor", "help");
 
         return badge;
@@ -494,10 +554,10 @@ public class TaleplerimView extends VerticalLayout {
 
     private String statusLabel(String status) {
         return switch (status) {
-            case "NEW" -> "Yeni";
-            case "İncelemede" -> "İncelemede";
-            case "İş Akışına Dönüştü" -> "İşleme Alındı";
-            case "KAPATILDI" -> "KAPATILDI";
+            case "NEW" -> getTranslation("requests.status.new");
+            case "INCELEMEDE", "İncelemede" -> getTranslation("requests.status.inReview");
+            case "ONAYLANDI", "İş Akışına Dönüştü" -> getTranslation("requests.status.inProgress");
+            case "KAPATILDI" -> getTranslation("requests.status.closed");
             default -> status;
         };
     }

@@ -1,20 +1,20 @@
 package com.example.base.ui.CustomerScreen;
 
 import com.example.base.repository.UserRepository;
-import com.example.base.service.FaqService; // EKLENDİ
+import com.example.base.service.FaqService;
 import com.example.base.service.NotificationService;
 import com.example.base.service.RequestService;
 import com.example.base.service.SystemLogService;
 import com.example.base.ui.MainScreen.MainLayout;
-import com.vaadin.flow.component.accordion.Accordion; // EKLENDİ
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
@@ -29,9 +29,9 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.upload.Upload;
 import com.vaadin.flow.component.upload.receivers.MemoryBuffer;
 import com.vaadin.flow.data.binder.Binder;
-import com.vaadin.flow.data.value.ValueChangeMode; // EKLENDİ
+import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 
@@ -43,40 +43,55 @@ import java.util.List;
 
 @Route(value = "talep-olustur", layout = MainLayout.class)
 @RolesAllowed("CUSTOMER")
-public class TalepAcma extends VerticalLayout {
+public class TalepAcma extends VerticalLayout implements HasDynamicTitle {
 
     public enum Kategori {
-        YAZILIM("Yazılım Hatası", "Uygulama veya ekranlarda karşılaştığınız hatalar"),
-        DONANIM("Donanım", "Bilgisayar, yazıcı, ağ cihazı gibi fiziksel sorunlar"),
-        AG("Ağ / Bağlantı", "İnternet, VPN veya sunucu erişim sorunları"),
-        ERISIM("Erişim / Yetki Talebi", "Yeni yetki, şifre sıfırlama, hesap talepleri"),
-        DIGER("Diğer", "Yukarıdakilere uymayan diğer talepleriniz");
+        YAZILIM("Yazılım Hatası", "Uygulama veya ekranlarda karşılaştığınız hatalar", "Software Error", "Errors you encounter in applications or screens"),
+        DONANIM("Donanım", "Bilgisayar, yazıcı, ağ cihazı gibi fiziksel sorunlar", "Hardware", "Physical problems like computers, printers, network devices"),
+        AG("Ağ / Bağlantı", "İnternet, VPN veya sunucu erişim sorunları", "Network / Connection", "Internet, VPN or server access issues"),
+        ERISIM("Erişim / Yetki Talebi", "Yeni yetki, şifre sıfırlama, hesap talepleri", "Access / Authorization Request", "New permissions, password resets, account requests"),
+        DIGER("Diğer", "Yukarıdakilere uymayan diğer talepleriniz", "Other", "Other requests that do not fit above");
 
-        private final String label;
-        private final String hint;
+        private final String labelTr;
+        private final String hintTr;
+        private final String labelEn;
+        private final String hintEn;
 
-        Kategori(String label, String hint) {
-            this.label = label;
-            this.hint = hint;
+        Kategori(String labelTr, String hintTr, String labelEn, String hintEn) {
+            this.labelTr = labelTr;
+            this.hintTr = hintTr;
+            this.labelEn = labelEn;
+            this.hintEn = hintEn;
         }
 
-        public String getLabel() { return label; }
-        public String getHint() { return hint; }
+        public String getLabel() { 
+            boolean isEnglish = "en".equals(UI.getCurrent().getLocale().getLanguage());
+            return isEnglish ? labelEn : labelTr; 
+        }
+
+        public String getHint() { 
+            boolean isEnglish = "en".equals(UI.getCurrent().getLocale().getLanguage());
+            return isEnglish ? hintEn : hintTr; 
+        }
     }
 
     private static final int MAX_DESCRIPTION_LENGTH = 1000;
     private static final long MAX_FILE_SIZE_BYTES = 5L * 1024 * 1024;
 
-    private final TextField title = new TextField("Talep Başlığı");
-    private final ComboBox<Kategori> category = new ComboBox<>("Kategori");
-    private final TextArea description = new TextArea("Talep Detayı");
+    private final TextField title = new TextField();
+    private final ComboBox<Kategori> category = new ComboBox<>();
+    private final TextArea description = new TextArea();
     private final Span charCounter = new Span("0 / " + MAX_DESCRIPTION_LENGTH);
-    private final Button submitButton = new Button("Talebi Gönder");
-    private final Button clearButton = new Button("Temizle");
+    private final Button submitButton = new Button();
+    private final Button clearButton = new Button();
 
     private final MemoryBuffer uploadBuffer = new MemoryBuffer();
     private final Upload screenshotUpload = new Upload(uploadBuffer);
     private final VerticalLayout previewsListLayout = new VerticalLayout();
+    
+    private final Div faqSuggestionBox = new Div();
+    private final Span suggestionText = new Span();
+    private final Paragraph suggestionAnswer = new Paragraph();
     
     private final List<byte[]> uploadedBytesList = new ArrayList<>();
     private final List<String> uploadedFileNames = new ArrayList<>();
@@ -86,17 +101,14 @@ public class TalepAcma extends VerticalLayout {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final SystemLogService systemLogService;
-    private final FaqService faqService; // EKLENDİ
-
-    // SSS (Bilgi Bankası) Bileşenleri
-    private final Accordion faqAccordion = new Accordion();
+    private final FaqService faqService;
 
     private final Binder<RequestFormDto> binder = new Binder<>(RequestFormDto.class);
     private RequestFormDto currentDto = new RequestFormDto();
 
     public TalepAcma(RequestService requestService, UserRepository userRepository,
                      NotificationService notificationService, SystemLogService systemLogService,
-                     FaqService faqService) { // Constructor güncellendi
+                     FaqService faqService) {
         this.requestService = requestService;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
@@ -109,7 +121,6 @@ public class TalepAcma extends VerticalLayout {
         getStyle().set("background-color", "var(--lumo-contrast-5pct)")
                   .set("overflow", "hidden");
 
-        // Kaydırma (Scroll) işlemi için ana kapsayıcı
         Div scrollWrapper = new Div();
         scrollWrapper.setWidthFull();
         scrollWrapper.getStyle()
@@ -119,11 +130,6 @@ public class TalepAcma extends VerticalLayout {
                 .set("overflow-y", "auto")
                 .set("padding-right", "8px");
 
-        // SSS (Bilgi Bankası) Bölümü eklendi
-        Div faqSection = buildFaqSection();
-        faqSection.getStyle().set("margin-bottom", "20px");
-
-        // İki kolonlu form bölümü
         Div gridContainer = new Div();
         gridContainer.setWidthFull();
         gridContainer.getStyle()
@@ -140,72 +146,45 @@ public class TalepAcma extends VerticalLayout {
         rightColumn.setSpacing(true);
 
         gridContainer.add(leftColumn, rightColumn);
-        scrollWrapper.add(faqSection, gridContainer); // Önce SSS, sonra Form
+        scrollWrapper.add(gridContainer);
 
         add(buildPageHeader(), scrollWrapper);
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("request.create.pageTitle");
     }
 
     private Div buildPageHeader() {
         Div header = new Div();
         header.setWidthFull();
-        header.getStyle().set("margin-bottom", "15px").set("flex-shrink", "0");
+        header.getStyle()
+                .set("margin-bottom", "15px")
+                .set("flex-shrink", "0")
+                .set("display", "flex")
+                .set("justify-content", "space-between")
+                .set("align-items", "center");
 
-        H2 heading = new H2("Yeni Talep Oluştur");
+        Div titleArea = new Div();
+        H2 heading = new H2(getTranslation("request.create.heading"));
         heading.getStyle().set("margin", "0 0 2px 0").set("color", "var(--lumo-header-text-color)").set("font-size", "22px");
-
-        Paragraph subtitle = new Paragraph("Yaşadığınız teknik problemi veya talebinizi detaylıca ileterek çözüm sürecini hızlandırın.");
+        Paragraph subtitle = new Paragraph(getTranslation("request.create.subtitle"));
         subtitle.getStyle()
                 .set("margin", "0")
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-s)");
+        titleArea.add(heading, subtitle);
 
-        header.add(heading, subtitle);
+        Button faqButton = new Button(getTranslation("request.create.faqBtn"), VaadinIcon.QUESTION_CIRCLE.create());
+        faqButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        faqButton.getStyle()
+                .set("cursor", "pointer")
+                .set("font-weight", "bold");
+        faqButton.addClickListener(e -> UI.getCurrent().navigate(FaqView.class));
+
+        header.add(titleArea, faqButton);
         return header;
-    }
-
-    // --- SSS / BİLGİ BANKASI BÖLÜMÜ BAŞLANGICI ---
-    private Div buildFaqSection() {
-        Div card = createCard();
-
-        HorizontalLayout headerRow = new HorizontalLayout();
-        headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
-        headerRow.setSpacing(true);
-        Div badge = iconBadge(VaadinIcon.SEARCH, "var(--lumo-success-color)");
-        H3 titleText = new H3("Nasıl Yardımcı Olabiliriz? (Bilgi Bankası)");
-        titleText.getStyle().set("margin", "0").set("font-size", "16px");
-        headerRow.add(badge, titleText);
-
-        TextField searchField = new TextField();
-        searchField.setPlaceholder("Talep oluşturmadan önce sorununuzu burada aratın (Örn: şifre, fatura, erişim...)");
-        searchField.setWidthFull();
-        searchField.setClearButtonVisible(true);
-        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
-        searchField.setValueChangeMode(ValueChangeMode.EAGER);
-        searchField.addValueChangeListener(e -> refreshFaq(e.getValue()));
-
-        faqAccordion.setWidthFull();
-        refreshFaq(""); // İlk açılışta tüm SSS'leri getir
-
-        VerticalLayout layout = new VerticalLayout(headerRow, searchField, faqAccordion);
-        layout.setPadding(false);
-        layout.setSpacing(true);
-
-        card.add(layout);
-        return card;
-    }
-
-    private void refreshFaq(String keyword) {
-        faqAccordion.getChildren().toList().forEach(faqAccordion::remove);
-
-        var faqs = faqService.searchFaq(keyword);
-
-        if (faqs.isEmpty()) {
-            faqAccordion.add("Sonuç Bulunamadı", new Paragraph("Aradığınız kelimeyle ilgili çözüm bankamızda bir kayıt yok. Lütfen aşağıdan talep oluşturun."));
-        } else {
-            for (var faq : faqs) {
-                faqAccordion.add(faq.getQuestion(), new Paragraph(faq.getAnswer()));
-            }
-        }
     }
 
     private Div createCard() {
@@ -250,7 +229,7 @@ public class TalepAcma extends VerticalLayout {
         Icon camIcon = VaadinIcon.CAMERA.create();
         camIcon.setSize("16px");
         camIcon.getStyle().set("color", "var(--lumo-secondary-text-color)");
-        Span label = new Span("Ekran Görüntüleri (Birden fazla ekleyebilirsiniz)");
+        Span label = new Span(getTranslation("request.create.screenshotsLabel"));
         label.getStyle().set("font-weight", "500").set("font-size", "var(--lumo-font-size-s)");
         labelRow.add(camIcon, label);
 
@@ -259,22 +238,30 @@ public class TalepAcma extends VerticalLayout {
         screenshotUpload.setMaxFileSize((int) MAX_FILE_SIZE_BYTES);
         screenshotUpload.setDropAllowed(true);
         screenshotUpload.setWidthFull();
+        
+        // İKON RENGİNİ KÖKTEN ÇÖZEN KISIM: Shadow DOM'un kullandığı renk değişkenlerini eziyoruz
         screenshotUpload.getStyle()
                 .set("margin-top", "8px")
                 .set("background", "var(--lumo-contrast-5pct)")
                 .set("border", "1px dashed var(--lumo-contrast-20pct)")
                 .set("border-radius", "10px")
-                .set("padding", "4px");
-        screenshotUpload.setUploadButton(new Button("Görsel Seç", VaadinIcon.UPLOAD.create()));
+                .set("padding", "4px")
+                .set("--lumo-primary-color", "#333333")      // Vaadin ikonunun aldığı ana renk
+                .set("--lumo-primary-text-color", "#333333") // Vaadin ikonunun alternatif metin rengi
+                .set("color", "#333333");                    // Genel kalıtım rengi
 
-        Span dropLabel = new Span("veya dosyaları buraya sürükleyin (PNG, JPG, WEBP — her biri en fazla 5MB)");
+        screenshotUpload.setUploadButton(new Button(getTranslation("request.create.uploadBtn"), VaadinIcon.UPLOAD.create()));
+
+        Span dropLabel = new Span(getTranslation("request.create.dropLabel"));
         dropLabel.getStyle()
-                .set("color", "var(--lumo-body-text-color) !important")
-                .set("-webkit-text-fill-color", "var(--lumo-body-text-color)")
+                .set("color", "#333333 !important") 
+                .set("-webkit-text-fill-color", "#333333") 
                 .set("background", "transparent")
                 .set("font-size", "var(--lumo-font-size-xs)")
                 .set("user-select", "none");
         screenshotUpload.setDropLabel(dropLabel);
+
+        // Eski "executeJs" JavaScript bloğunu tamamen kaldırdık, artık ona ihtiyaç yok.
 
         screenshotUpload.addSucceededListener(event -> {
             try (InputStream inputStream = uploadBuffer.getInputStream()) {
@@ -294,9 +281,9 @@ public class TalepAcma extends VerticalLayout {
 
                 renderPreviews();
 
-                Notification.show("Görsel eklendi: " + fileName, 2000, Notification.Position.TOP_CENTER);
+                Notification.show(getTranslation("request.create.notif.added") + fileName, 2000, Notification.Position.TOP_CENTER);
             } catch (IOException e) {
-                Notification.show("Görsel okunurken hata: " + e.getMessage(), 3000, Notification.Position.TOP_CENTER);
+                Notification.show(getTranslation("request.create.notif.readError") + e.getMessage(), 3000, Notification.Position.TOP_CENTER);
             }
         });
 
@@ -358,6 +345,7 @@ public class TalepAcma extends VerticalLayout {
         uploadedMimeTypes.clear();
         screenshotUpload.clearFileList();
         previewsListLayout.removeAll();
+        faqSuggestionBox.setVisible(false);
     }
 
     private Div buildFormCard() {
@@ -373,9 +361,9 @@ public class TalepAcma extends VerticalLayout {
         VerticalLayout headerText = new VerticalLayout();
         headerText.setPadding(false);
         headerText.setSpacing(false);
-        H3 cardTitle = new H3("Talep Formu");
+        H3 cardTitle = new H3(getTranslation("request.create.formTitle"));
         cardTitle.getStyle().set("margin", "0").set("font-size", "16px");
-        Span requiredNote = new Span("* işaretli alanların doldurulması zorunludur");
+        Span requiredNote = new Span(getTranslation("request.create.requiredNote"));
         requiredNote.getStyle()
                 .set("color", "var(--lumo-secondary-text-color)")
                 .set("font-size", "var(--lumo-font-size-xs)");
@@ -383,22 +371,30 @@ public class TalepAcma extends VerticalLayout {
 
         headerRow.add(badge, headerText);
 
+        title.setLabel(getTranslation("request.create.field.title"));
         title.setWidthFull();
-        title.setPlaceholder("Örn: VPN bağlantısı sağlanamıyor");
+        title.setPlaceholder(getTranslation("request.create.field.titlePlaceholder"));
         title.setClearButtonVisible(true);
 
+        category.setLabel(getTranslation("request.create.field.category"));
         category.setWidthFull();
-        category.setPlaceholder("Kategori seçiniz");
+        category.setPlaceholder(getTranslation("request.create.field.categoryPlaceholder"));
         category.setItems(Kategori.values());
         category.setItemLabelGenerator(Kategori::getLabel);
 
+        description.setLabel(getTranslation("request.create.field.description"));
         description.setWidthFull();
-        description.setPlaceholder("Karşılaştığınız sorunu ve aldığınız hata kodlarını buraya yazın...");
+        description.setPlaceholder(getTranslation("request.create.field.descPlaceholder"));
         description.setMinHeight("140px");
         description.setMaxLength(MAX_DESCRIPTION_LENGTH);
+
+        description.setValueChangeMode(ValueChangeMode.LAZY);
+        description.setValueChangeTimeout(1000); 
         description.addValueChangeListener(e -> {
             int len = e.getValue() == null ? 0 : e.getValue().length();
             charCounter.setText(len + " / " + MAX_DESCRIPTION_LENGTH);
+            
+            checkForFaqSuggestion(e.getValue());
         });
 
         charCounter.getStyle()
@@ -416,14 +412,21 @@ public class TalepAcma extends VerticalLayout {
         formLayout.add(title, category);
         formLayout.add(description);
         formLayout.setColspan(description, 2);
+
+        setupSuggestionBox();
+        formLayout.add(faqSuggestionBox);
+        formLayout.setColspan(faqSuggestionBox, 2);
+        
         formLayout.getStyle().set("margin-top", "12px");
 
         setupBinder();
 
+        submitButton.setText(getTranslation("request.create.submitBtn"));
         submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submitButton.getStyle().set("height", "40px").set("font-weight", "600");
-        submitButton.addClickListener(event -> saveRequest());
+        submitButton.addClickListener(event -> saveRequest()); 
 
+        clearButton.setText(getTranslation("request.create.clearBtn"));
         clearButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         clearButton.getStyle().set("height", "40px");
         clearButton.addClickListener(event -> resetForm());
@@ -449,7 +452,7 @@ public class TalepAcma extends VerticalLayout {
         headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
         headerRow.setSpacing(true);
         Div badge = iconBadge(VaadinIcon.LIGHTBULB, "var(--lumo-success-color)");
-        H3 title2 = new H3("Hızlı İpuçları");
+        H3 title2 = new H3(getTranslation("request.create.tips.title"));
         title2.getStyle().set("margin", "0").set("font-size", "15px");
         headerRow.add(badge, title2);
 
@@ -459,9 +462,9 @@ public class TalepAcma extends VerticalLayout {
         tips.getStyle().set("margin-top", "12px");
 
         String[] tipTexts = {
-                "Başlığı kısa ve net tutun.",
-                "Birden fazla hata ekran görüntüsü ekleyebilirsiniz.",
-                "Doğru kategori seçimi süreci hızlandırır."
+                getTranslation("request.create.tips.1"),
+                getTranslation("request.create.tips.2"),
+                getTranslation("request.create.tips.3")
         };
 
         for (String t : tipTexts) {
@@ -488,7 +491,7 @@ public class TalepAcma extends VerticalLayout {
         headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
         headerRow.setSpacing(true);
         Div badge = iconBadge(VaadinIcon.TAGS, "var(--lumo-warning-color)");
-        H3 title2 = new H3("Kategori Rehberi");
+        H3 title2 = new H3(getTranslation("request.create.legend.title"));
         title2.getStyle().set("margin", "0").set("font-size", "15px");
         headerRow.add(badge, title2);
 
@@ -520,17 +523,17 @@ public class TalepAcma extends VerticalLayout {
 
     private void setupBinder() {
         binder.forField(title)
-                .asRequired("Başlık boş olamaz")
-                .withValidator(t -> t.trim().length() >= 5, "Başlık en az 5 karakter olmalıdır")
+                .asRequired(getTranslation("request.create.validator.titleRequired"))
+                .withValidator(t -> t.trim().length() >= 5, getTranslation("request.create.validator.titleMin"))
                 .bind(RequestFormDto::getTitle, RequestFormDto::setTitle);
 
         binder.forField(category)
-                .asRequired("Lütfen bir kategori seçin")
+                .asRequired(getTranslation("request.create.validator.categoryRequired"))
                 .bind(RequestFormDto::getCategory, RequestFormDto::setCategory);
 
         binder.forField(description)
-                .asRequired("Detay boş olamaz")
-                .withValidator(d -> d.trim().length() >= 10, "Açıklama en az 10 karakter olmalıdır")
+                .asRequired(getTranslation("request.create.validator.descRequired"))
+                .withValidator(d -> d.trim().length() >= 10, getTranslation("request.create.validator.descMin"))
                 .bind(RequestFormDto::getDescription, RequestFormDto::setDescription);
 
         binder.setBean(currentDto);
@@ -545,53 +548,183 @@ public class TalepAcma extends VerticalLayout {
 
     private void saveRequest() {
         if (binder.isValid()) {
-            try {
-                org.springframework.security.core.Authentication auth =
-                        org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-                String loggedInEmail = (auth != null) ? auth.getName() : "";
+            String formTitle = currentDto.getTitle();
+            String formDesc = currentDto.getDescription();
 
-                com.example.base.entity.UserEntity customerUser = userRepository.findByEmail(loggedInEmail)
-                        .orElseThrow(() -> new RuntimeException("Giriş yapan kullanıcı bulunamadı!"));
+            boolean isDuplicate = requestService.hasSimilarOpenRequest(formTitle, formDesc);
 
-                byte[] mainBytes = !uploadedBytesList.isEmpty() ? uploadedBytesList.get(0) : null;
-                String mainName = !uploadedFileNames.isEmpty() ? uploadedFileNames.get(0) : null;
-                String mainMime = !uploadedMimeTypes.isEmpty() ? uploadedMimeTypes.get(0) : null;
+            if (isDuplicate) {
+                ConfirmDialog dialog = new ConfirmDialog();
+                dialog.setHeader(getTranslation("request.create.dialog.header"));
+                dialog.setText(getTranslation("request.create.dialog.text"));
+                
+                dialog.setCancelable(true);
+                dialog.setCancelText(getTranslation("request.create.dialog.cancel"));
+                dialog.setCancelButtonTheme("tertiary");
+                
+                dialog.setConfirmText(getTranslation("request.create.dialog.confirm"));
+                dialog.setConfirmButtonTheme("primary error");
 
-                requestService.createRequest(
-                        customerUser.getUserId(),
-                        currentDto.getTitle(),
-                        currentDto.getDescription(),
-                        currentDto.getCategory().name(),
-                        mainBytes,
-                        mainName,
-                        mainMime
-                );
-
-                String ekGoruntusuNotu = !uploadedFileNames.isEmpty()
-                        ? " [Ekler: " + String.join(", ", uploadedFileNames) + "]"
-                        : "";
-
-                systemLogService.log("Müşteri (" + loggedInEmail + ") yeni talep oluşturdu: "
-                        + currentDto.getTitle() + " [Kategori: " + currentDto.getCategory().getLabel() + "]" + ekGoruntusuNotu);
-
-                notificationService.notifyRole("PO", "Yeni Talep Geldi",
-                        "İncelenmesi gereken yeni bir talep eklendi: " + currentDto.getTitle());
-
-                Notification success = Notification.show("Talebiniz başarıyla oluşturuldu!", 3000,
-                        Notification.Position.TOP_CENTER);
-                success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-
-                resetForm();
-
-            } catch (Exception e) {
-                Notification error = Notification.show("Hata oluştu: " + e.getMessage(), 4000,
-                        Notification.Position.TOP_CENTER);
-                error.addThemeVariants(NotificationVariant.LUMO_ERROR);
+                dialog.addConfirmListener(event -> executeSaveToDatabase());
+                dialog.open();
+            } else {
+                executeSaveToDatabase();
             }
         } else {
             binder.validate();
-            Notification.show("Lütfen formdaki hatalı alanları düzeltin.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("request.create.validator.fixErrors"), 3000, Notification.Position.MIDDLE);
         }
+    }
+
+    private void executeSaveToDatabase() {
+        try {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            String loggedInEmail = (auth != null) ? auth.getName() : "";
+
+            com.example.base.entity.UserEntity customerUser = userRepository.findByEmail(loggedInEmail)
+                    .orElseThrow(() -> new RuntimeException("Giriş yapan kullanıcı bulunamadı!"));
+
+            byte[] mainBytes = !uploadedBytesList.isEmpty() ? uploadedBytesList.get(0) : null;
+            String mainName = !uploadedFileNames.isEmpty() ? uploadedFileNames.get(0) : null;
+            String mainMime = !uploadedMimeTypes.isEmpty() ? uploadedMimeTypes.get(0) : null;
+
+            requestService.createRequest(
+                    customerUser.getUserId(),
+                    currentDto.getTitle(),
+                    currentDto.getDescription(),
+                    currentDto.getCategory().name(),
+                    mainBytes,
+                    mainName,
+                    mainMime
+            );
+
+            String ekGoruntusuNotu = !uploadedFileNames.isEmpty()
+                    ? " [Ekler: " + String.join(", ", uploadedFileNames) + "]"
+                    : "";
+
+            systemLogService.log("Müşteri (" + loggedInEmail + ") yeni talep oluşturdu: "
+                    + currentDto.getTitle() + " [Kategori: " + currentDto.getCategory().getLabel() + "]" + ekGoruntusuNotu);
+
+            notificationService.notifyRole("PO", "Yeni Talep Geldi",
+                    "İncelenmesi gereken yeni bir talep eklendi: " + currentDto.getTitle());
+
+            Notification success = Notification.show(getTranslation("request.create.notif.success"), 3000,
+                    Notification.Position.TOP_CENTER);
+            success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+
+            resetForm();
+
+        } catch (Exception e) {
+            Notification error = Notification.show(getTranslation("request.create.notif.error") + e.getMessage(), 4000,
+                    Notification.Position.TOP_CENTER);
+            error.addThemeVariants(NotificationVariant.LUMO_ERROR);
+        }
+    }
+
+    private void setupSuggestionBox() {
+        faqSuggestionBox.setVisible(false);
+        faqSuggestionBox.getStyle()
+                .set("background-color", "var(--lumo-primary-color-10pct)")
+                .set("border", "1px solid var(--lumo-primary-color-50pct)")
+                .set("border-radius", "8px")
+                .set("padding", "15px")
+                .set("margin-top", "10px")
+                .set("display", "flex")
+                .set("flex-direction", "column")
+                .set("gap", "8px")
+                .set("transition", "all 0.3s ease-in-out");
+
+        HorizontalLayout headerRow = new HorizontalLayout();
+        headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
+        Icon ideaIcon = VaadinIcon.LIGHTBULB.create();
+        ideaIcon.setColor("var(--lumo-primary-color)");
+        
+        Span headerText = new Span(getTranslation("request.create.suggestion.header"));
+        headerText.getStyle().set("font-weight", "bold").set("color", "var(--lumo-primary-text-color)");
+        headerRow.add(ideaIcon, headerText);
+
+        suggestionText.getStyle().set("font-weight", "600").set("font-size", "14px");
+        suggestionAnswer.getStyle().set("margin", "0").set("font-size", "13px").set("color", "var(--lumo-secondary-text-color)");
+
+        faqSuggestionBox.add(headerRow, suggestionText, suggestionAnswer);
+    }
+
+    private void checkForFaqSuggestion(String text) {
+        if (text == null || text.trim().length() < 10) {
+            faqSuggestionBox.setVisible(false);
+            return;
+        }
+
+        List<String> userWords = extractMeaningfulWords(text);
+        if (userWords.isEmpty()) {
+            faqSuggestionBox.setVisible(false);
+            return;
+        }
+
+        var allFaqs = faqService.searchFaq(""); 
+        boolean isEnglish = "en".equals(UI.getCurrent().getLocale().getLanguage());
+        
+        int maxScore = 0;
+        int bestIndex = -1; 
+
+        for (int i = 0; i < allFaqs.size(); i++) {
+            var faq = allFaqs.get(i);
+            
+            String q = isEnglish && faq.getQuestionEn() != null ? faq.getQuestionEn() : faq.getQuestion();
+            String a = isEnglish && faq.getAnswerEn() != null ? faq.getAnswerEn() : faq.getAnswer();
+
+            List<String> faqWords = extractMeaningfulWords(q + " " + a);
+            
+            int score = calculateMatchScore(userWords, faqWords);
+            
+            if (score > maxScore) {
+                maxScore = score;
+                bestIndex = i;
+            }
+        }
+
+        if (bestIndex != -1 && maxScore > 0) {
+            var topFaq = allFaqs.get(bestIndex); 
+            
+            String qDisplay = isEnglish && topFaq.getQuestionEn() != null ? topFaq.getQuestionEn() : topFaq.getQuestion();
+            String aDisplay = isEnglish && topFaq.getAnswerEn() != null ? topFaq.getAnswerEn() : topFaq.getAnswer();
+
+            suggestionText.setText(getTranslation("request.create.suggestion.question") + ": " + qDisplay);
+            suggestionAnswer.setText(getTranslation("request.create.suggestion.answer") + ": " + aDisplay);
+            faqSuggestionBox.setVisible(true);
+        } else {
+            faqSuggestionBox.setVisible(false);
+        }
+    }
+
+    private List<String> extractMeaningfulWords(String text) {
+        List<String> stopWords = List.of(
+            "şirket", "şirkete", "şirketi", "nasıl", "neden", "niçin", "kim", 
+            "hangi", "yapabilirim", "edebilirim", "istiyorum", "alabilirim", 
+            "yardım", "lütfen", "için", "gibi", "kadar", "olan", "bana", 
+            "benim", "bizim", "bunu", "veya", "ile", "göre", "acaba",
+            "company", "how", "why", "who", "which", "want", "please", 
+            "for", "like", "with", "about", "what", "can", "do"
+        );
+
+        return java.util.Arrays.stream(text.toLowerCase().split("\\W+"))
+                .filter(w -> w.length() > 3 && !stopWords.contains(w))
+                .toList();
+    }
+
+    private int calculateMatchScore(List<String> userWords, List<String> faqWords) {
+        if (userWords.isEmpty() || faqWords.isEmpty()) return 0;
+        
+        java.util.Set<String> faqSet = new java.util.HashSet<>(faqWords);
+        int matchCount = 0;
+        
+        for (String w : userWords) {
+            if (faqSet.contains(w)) {
+                matchCount++;
+            }
+        }
+        return matchCount; 
     }
 
     public static class RequestFormDto {

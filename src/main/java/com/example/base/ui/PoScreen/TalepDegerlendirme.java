@@ -16,6 +16,7 @@ import com.example.base.repository.UserRepository;
 import com.example.base.service.ChatService;
 import com.example.base.service.NotificationService;
 import com.example.base.service.RequestService;
+import com.example.base.service.SettingsService;
 import com.example.base.service.SystemLogService; 
 import com.example.base.ui.Class.TalepChat;
 import com.example.base.ui.MainScreen.MainLayout;
@@ -45,6 +46,7 @@ import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.value.ValueChangeMode;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.StreamResource;
 
@@ -52,44 +54,47 @@ import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "talep-degerlendir", layout = MainLayout.class)
 @RolesAllowed("PO")
-public class TalepDegerlendirme extends VerticalLayout {
+public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestService requestService;
     private final NotificationService notificationService;
     private final ChatService chatService;
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
-    private final SystemLogService systemLogService; 
+    private final SystemLogService systemLogService;
+    private final SettingsService settingsService;
 
     private Grid<RequestEntity> grid = new Grid<>(RequestEntity.class, false);
     private GridListDataView<RequestEntity> dataView;
     private final RequestFilter requestFilter = new RequestFilter();
 
-    private ComboBox<String> urgency = new ComboBox<>("Aciliyet");
-    private ComboBox<String> impact = new ComboBox<>("İş Etkisi");
-    private ComboBox<String> effort = new ComboBox<>("Efor / Maliyet"); 
-    private Checkbox securityOverride = new Checkbox("Kritik Güvenlik Kesintisi (Öncelik Puanı: 999)"); 
+    private final ComboBox<String> urgency = new ComboBox<>();
+    private final ComboBox<String> impact = new ComboBox<>();
+    private final ComboBox<String> effort = new ComboBox<>(); 
+    private final Checkbox securityOverride = new Checkbox(); 
 
-    private Button scoreButton = new Button("Kaydet ve Önceliklendir");
-    private Button aktar = new Button("Yazılımcıya Aktar");
-    private Button kapatBtn = new Button("Talebi Kapat / Reddet");
-    private Button iptal = new Button("İptal");
+    private final Button scoreButton = new Button();
+    private final Button aktar = new Button();
+    private final Button kapatBtn = new Button();
+    private final Button iptal = new Button();
     
-    private Dialog secim = new Dialog("Detaylı Önceliklendirme (WSJF Modeli)");
-    private Dialog closeDialog = new Dialog();
-    private TextArea closeReason = new TextArea("Kapatma / Red Nedeni");
+    private final Dialog secim = new Dialog();
+    private final Dialog closeDialog = new Dialog();
+    private final TextArea closeReason = new TextArea();
 
     private RequestEntity selectedRequest;
 
     public TalepDegerlendirme(RequestService requestService, NotificationService notificationService,
-                              ChatService chatService, UserRepository userRepository, 
-                              RequestRepository requestRepository, SystemLogService systemLogService) {
+                             ChatService chatService, UserRepository userRepository,
+                             RequestRepository requestRepository, SystemLogService systemLogService,
+                             SettingsService settingsService) {
         this.requestService = requestService;
         this.notificationService = notificationService;
         this.chatService = chatService;
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
         this.systemLogService = systemLogService;
+        this.settingsService = settingsService;
 
         setSizeFull();
         setPadding(true);
@@ -104,7 +109,7 @@ public class TalepDegerlendirme extends VerticalLayout {
                 .set("box-shadow", "0 4px 20px rgba(0, 0, 0, 0.05)")
                 .set("border", "1px solid var(--lumo-contrast-10pct)")
                 .set("padding", "24px")
-                .set("box-sizing", "border-box") // Kaydırma çubuğunu önler
+                .set("box-sizing", "border-box")
                 .set("width", "100%")
                 .set("margin", "0 auto")
                 .set("height", "calc(100vh - 120px)")
@@ -114,9 +119,9 @@ public class TalepDegerlendirme extends VerticalLayout {
         Div header = new Div();
         header.setWidthFull();
         header.getStyle().set("margin-bottom", "16px").set("flex-shrink", "0");
-        H2 heading = new H2("Bekleyen Talepler (PO Ekranı)");
+        H2 heading = new H2(getTranslation("po.eval.heading"));
         heading.getStyle().set("margin", "0 0 4px 0").set("color", "var(--lumo-header-text-color)");
-        Paragraph subtitle = new Paragraph("Talepleri önceliklendirin, görevleri yazılım ekibine aktarın veya SLA ihlallerini takip edin.");
+        Paragraph subtitle = new Paragraph(getTranslation("po.eval.subtitle"));
         subtitle.getStyle().set("margin", "0").set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
         header.add(heading, subtitle);
 
@@ -130,22 +135,34 @@ public class TalepDegerlendirme extends VerticalLayout {
         configureComboBoxes();
         configureCloseDialog();
 
+        scoreButton.setText(getTranslation("po.eval.btn.score"));
         scoreButton.addClickListener(event -> evaluateRequest());
         
+        aktar.setText(getTranslation("po.eval.btn.transfer"));
         aktar.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        aktar.getElement().setProperty("title", "Sadece puanı 50'nin üzerinde olan veya Kritik işaretlenmiş talepler aktarılabilir.");
+        aktar.getElement().setProperty("title", getTranslation("po.eval.tooltip.transfer"));
         aktar.addClickListener(event -> convertToWorkflow());
         
+        kapatBtn.setText(getTranslation("po.eval.btn.closeReject"));
         kapatBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
         kapatBtn.addClickListener(event -> {
             secim.close();
             closeDialog.open();
         });
+
+        iptal.setText(getTranslation("po.eval.btn.cancel"));
         iptal.addClickListener(event -> cancel());
 
+        secim.setHeaderTitle(getTranslation("po.eval.dialog.title"));
         secim.getFooter().add(scoreButton, aktar, kapatBtn, iptal);
         
+        securityOverride.setLabel(getTranslation("po.eval.securityOverride"));
         securityOverride.getStyle().set("margin-top", "15px").set("font-weight", "bold").set("color", "var(--lumo-error-text-color)");
+        
+        impact.setLabel(getTranslation("po.eval.impact"));
+        urgency.setLabel(getTranslation("po.eval.urgency"));
+        effort.setLabel(getTranslation("po.eval.effort"));
+
         FormLayout formLayout = new FormLayout(impact, urgency, effort);
         formLayout.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
         
@@ -158,6 +175,11 @@ public class TalepDegerlendirme extends VerticalLayout {
         refreshGrid();
     }
 
+    @Override
+    public String getPageTitle() {
+        return getTranslation("po.eval.pageTitle");
+    }
+
     private void cancel() {
         secim.close();
         selectedRequest = null;
@@ -165,30 +187,28 @@ public class TalepDegerlendirme extends VerticalLayout {
 
     private void configureGrid() {
         Grid.Column<RequestEntity> assigneeCol = grid.addColumn(request -> {
-            if ("NEW".equals(request.getStatus())) return "Destek Ekibi";
-            if ("INCELEMEDE".equals(request.getStatus())) return "Ürün Yönetimi";
-            if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) return "Yazılım Ekibi";
+            if ("NEW".equals(request.getStatus())) return getTranslation("po.eval.team.support");
+            if ("INCELEMEDE".equals(request.getStatus())) return getTranslation("po.eval.team.po");
+            if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) return getTranslation("po.eval.team.software");
             return request.getStatus();
-        }).setHeader("Sorumlu").setAutoWidth(true).setFlexGrow(0);
+        }).setHeader(getTranslation("po.eval.grid.assignee")).setAutoWidth(true).setFlexGrow(0);
 
-        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader("Başlık").setFlexGrow(1);
-        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader("Detay").setFlexGrow(2);
+        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("po.eval.grid.title")).setFlexGrow(1);
+        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader(getTranslation("po.eval.grid.desc")).setFlexGrow(2);
         
         Grid.Column<RequestEntity> dateCol = grid.addColumn(request -> 
             request.getCreatedAt() != null ? request.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "-"
-        ).setHeader("Tarih").setAutoWidth(true).setFlexGrow(0);
+        ).setHeader(getTranslation("po.eval.grid.date")).setAutoWidth(true).setFlexGrow(0);
 
-        // GÖRSEL BUTONU (Yazısız, Sadece İkon)
-        grid.addComponentColumn(this::createScreenshotButton).setHeader("Görsel").setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createScreenshotButton).setHeader(getTranslation("po.eval.grid.screenshot")).setAutoWidth(true).setFlexGrow(0);
         
         grid.addColumn(request -> requestService.getRequestPriority(request.getRequestId()))
-                .setHeader("Puan").setAutoWidth(true).setFlexGrow(0);
+                .setHeader(getTranslation("po.eval.grid.score")).setAutoWidth(true).setFlexGrow(0);
 
-        // SOHBET BUTONU (Yazısız, Sadece İkon)
         grid.addComponentColumn(request -> {
             Button chatButton = new Button(VaadinIcon.CHAT.create());
             chatButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-            chatButton.getElement().setProperty("title", "Sohbeti Aç");
+            chatButton.getElement().setProperty("title", getTranslation("po.eval.tooltip.chat"));
 
             Div container = new Div(chatButton);
             container.getStyle().set("position", "relative").set("display", "inline-block");
@@ -210,19 +230,18 @@ public class TalepDegerlendirme extends VerticalLayout {
 
             chatButton.addClickListener(e -> e.getSource().getUI().ifPresent(ui -> ui.navigate(TalepChat.class, request.getRequestId())));
             return container;
-        }).setHeader("Sohbet").setAutoWidth(true).setFlexGrow(0);
+        }).setHeader(getTranslation("po.eval.grid.chat")).setAutoWidth(true).setFlexGrow(0);
 
-        // GEÇMİŞ BUTONU (Yazısız, Sadece İkon)
         grid.addComponentColumn(request -> {
             Button historyBtn = new Button(VaadinIcon.TIME_BACKWARD.create());
             historyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
-            historyBtn.getElement().setProperty("title", "Talep Geçmişi");
+            historyBtn.getElement().setProperty("title", getTranslation("po.eval.tooltip.history"));
             historyBtn.addClickListener(e -> openHistoryDialog(request));
             return historyBtn;
-        }).setHeader("Geçmiş").setAutoWidth(true).setFlexGrow(0);
+        }).setHeader(getTranslation("po.eval.grid.history")).setAutoWidth(true).setFlexGrow(0);
 
-        grid.addComponentColumn(this::createRatingColumn).setHeader("Değerlendirme").setAutoWidth(true).setFlexGrow(0);
-        grid.addComponentColumn(this::createSlaBadge).setHeader("SLA").setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createRatingColumn).setHeader(getTranslation("po.eval.grid.rating")).setAutoWidth(true).setFlexGrow(0);
+        grid.addComponentColumn(this::createSlaBadge).setHeader(getTranslation("po.eval.grid.sla")).setAutoWidth(true).setFlexGrow(0);
 
         grid.asSingleSelect().addValueChangeListener(event -> {
             selectedRequest = event.getValue();
@@ -231,16 +250,25 @@ public class TalepDegerlendirme extends VerticalLayout {
             }
         });
 
+        TextField searchField = new TextField();
+        searchField.setPlaceholder(getTranslation("po.eval.filter.searchPlaceholder"));
+        searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
+        searchField.setValueChangeMode(ValueChangeMode.LAZY);
+        searchField.setClearButtonVisible(true);
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
+        searchField.setWidthFull();
+        searchField.addValueChangeListener(e -> requestFilter.setSearchTerm(e.getValue()));
+
         HeaderRow headerRow = grid.appendHeaderRow();
-        headerRow.getCell(assigneeCol).setComponent(createComboBoxFilterHeader("Sorumlu...", requestFilter::setAssignee));
-        headerRow.getCell(titleCol).setComponent(createFilterHeader("Ara...", requestFilter::setTitle));
-        headerRow.getCell(descCol).setComponent(createFilterHeader("Detay ara...", requestFilter::setDescription));
+        headerRow.getCell(assigneeCol).setComponent(createComboBoxFilterHeader(getTranslation("po.eval.filter.assigneePlaceholder"), requestFilter::setAssignee));
+        headerRow.getCell(titleCol).setComponent(searchField);
+        headerRow.getCell(descCol).setComponent(new Span());
         headerRow.getCell(dateCol).setComponent(createDateRangeFilterHeader(requestFilter));
     }
 
     private Badge createSlaBadge(RequestEntity request) {
         if ("KAPATILDI".equals(request.getStatus())) {
-            Badge closedBadge = new Badge("Tamamlandı");
+            Badge closedBadge = new Badge(getTranslation("requests.sla.completed"));
             closedBadge.addThemeVariants(BadgeVariant.CONTRAST); 
             return closedBadge;
         }
@@ -249,21 +277,21 @@ public class TalepDegerlendirme extends VerticalLayout {
 
         long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
 
-        long slaLimitHours = 24; 
-        long warningLimitHours = (long) (slaLimitHours * 0.75);
+        long slaLimitHours = settingsService.getSlaLimitHours();
+        long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
 
         if (hoursElapsed >= slaLimitHours) {
-            Badge ihlalBadge = new Badge("İHLAL (" + hoursElapsed + "s)");
+            Badge ihlalBadge = new Badge(getTranslation("requests.sla.violated") + " (" + hoursElapsed + "s)");
             ihlalBadge.addThemeVariants(BadgeVariant.ERROR);
-            ihlalBadge.getElement().setProperty("title", "SLA Süresi Aşıldı!");
+            ihlalBadge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
             return ihlalBadge;
         } else if (hoursElapsed >= warningLimitHours) {
-            Badge uyariBadge = new Badge("YAKLAŞIYOR (" + hoursElapsed + "s)");
+            Badge uyariBadge = new Badge(getTranslation("requests.sla.warning") + " (" + hoursElapsed + "s)");
             uyariBadge.addThemeVariants(BadgeVariant.WARNING);
-            uyariBadge.getElement().setProperty("title", "SLA İhlaline Az Kaldı!");
+            uyariBadge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
             return uyariBadge;
         } else {
-            Badge normalBadge = new Badge("NORMAL (" + hoursElapsed + "s)");
+            Badge normalBadge = new Badge(getTranslation("requests.sla.normal") + " (" + hoursElapsed + "s)");
             normalBadge.addThemeVariants(BadgeVariant.SUCCESS);
             return normalBadge;
         }
@@ -276,19 +304,19 @@ public class TalepDegerlendirme extends VerticalLayout {
             pointBadge.getStyle().set("font-weight", "bold");
             
             if (request.getSatisfactionComment() != null && !request.getSatisfactionComment().isEmpty()) {
-                pointBadge.getElement().setProperty("title", "Yorum: " + request.getSatisfactionComment());
+                pointBadge.getElement().setProperty("title", getTranslation("helpdesk.triage.commentPrefix") + ": " + request.getSatisfactionComment());
                 pointBadge.getStyle().set("cursor", "help");
             }
             return pointBadge;
         } else if ("KAPATILDI".equals(request.getStatus())) {
-            return new Span("Yok");
+            return new Span(getTranslation("po.eval.unrated"));
         }
         return new Span("-");
     }
 
     private void openHistoryDialog(RequestEntity request) {
         Dialog historyDialog = new Dialog();
-        historyDialog.setHeaderTitle("Talep Geçmişi (Talep #" + request.getRequestId() + ")");
+        historyDialog.setHeaderTitle(getTranslation("po.eval.history.title") + " (#" + request.getRequestId() + ")");
         historyDialog.setWidth("600px");
         historyDialog.setMaxHeight("80vh");
 
@@ -300,7 +328,7 @@ public class TalepDegerlendirme extends VerticalLayout {
             var logs = systemLogService.getLogsForRequest(request.getRequestId());
 
             if (logs == null || logs.isEmpty()) {
-                layout.add(new Span("Bu talep için henüz bir geçmiş (log) kaydı bulunmuyor."));
+                layout.add(new Span(getTranslation("po.eval.history.empty")));
             } else {
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
                 for (var log : logs) {
@@ -310,7 +338,7 @@ public class TalepDegerlendirme extends VerticalLayout {
                             .set("padding-left", "15px")
                             .set("margin-bottom", "15px");
 
-                    String dateStr = (log.getCreatedAt() != null) ? log.getCreatedAt().format(formatter) : "Tarih Bilinmiyor";
+                    String dateStr = (log.getCreatedAt() != null) ? log.getCreatedAt().format(formatter) : getTranslation("po.eval.history.unknownDate");
                     Span dateSpan = new Span(dateStr);
                     dateSpan.getStyle()
                             .set("font-size", "0.85em")
@@ -328,11 +356,11 @@ public class TalepDegerlendirme extends VerticalLayout {
                 }
             }
         } catch (Exception e) {
-            layout.add(new Span("Geçmiş yüklenirken hata oluştu: " + e.getMessage()));
+            layout.add(new Span(getTranslation("po.eval.history.error") + ": " + e.getMessage()));
         }
 
         historyDialog.add(layout);
-        Button closeBtn = new Button("Kapat", e -> historyDialog.close());
+        Button closeBtn = new Button(getTranslation("requests.btn.close"), e -> historyDialog.close());
         historyDialog.getFooter().add(closeBtn);
         
         historyDialog.open();
@@ -346,18 +374,18 @@ public class TalepDegerlendirme extends VerticalLayout {
 
         if (!hasScreenshot) {
             button.setEnabled(false);
-            button.getElement().setProperty("title", "Görsel Yok");
+            button.getElement().setProperty("title", getTranslation("po.eval.tooltip.noImage"));
             return button;
         }
 
-        button.getElement().setProperty("title", "Ekran Görüntüsünü Aç");
+        button.getElement().setProperty("title", getTranslation("po.eval.tooltip.openImage"));
         button.addClickListener(e -> openScreenshotDialog(request));
         return button;
     }
 
     private void openScreenshotDialog(RequestEntity request) {
         Dialog dialog = new Dialog();
-        dialog.setHeaderTitle("Ekran Görüntüsü - Talep #" + request.getRequestId());
+        dialog.setHeaderTitle(getTranslation("requests.dialog.screenshotTitle") + " #" + request.getRequestId());
         dialog.setWidth("640px");
         dialog.setCloseOnOutsideClick(true);
 
@@ -372,16 +400,21 @@ public class TalepDegerlendirme extends VerticalLayout {
                 .set("object-fit", "contain")
                 .set("border-radius", "8px");
 
-        Button closeBtn = new Button("Kapat", e -> dialog.close());
+        Button closeBtn = new Button(getTranslation("requests.btn.close"), e -> dialog.close());
 
         dialog.add(image);
         dialog.getFooter().add(closeBtn);
         dialog.open();
     }
 
-    private static Component createComboBoxFilterHeader(String placeholder, Consumer<String> filterChangeConsumer) {
+    private Component createComboBoxFilterHeader(String placeholder, Consumer<String> filterChangeConsumer) {
         ComboBox<String> comboBox = new ComboBox<>();
-        comboBox.setItems("Destek Ekibi", "Ürün Yönetimi", "Yazılım Ekibi", "KAPATILDI");
+        comboBox.setItems(
+            getTranslation("po.eval.team.support"), 
+            getTranslation("po.eval.team.po"), 
+            getTranslation("po.eval.team.software"), 
+            getTranslation("requests.status.closed")
+        );
         comboBox.setPlaceholder(placeholder);
         comboBox.setClearButtonVisible(true);
         comboBox.setWidthFull();
@@ -389,35 +422,24 @@ public class TalepDegerlendirme extends VerticalLayout {
         return comboBox;
     }
 
-    private static Component createFilterHeader(String placeholder, Consumer<String> filterChangeConsumer) {
-        TextField textField = new TextField();
-        textField.setPlaceholder(placeholder);
-        textField.setValueChangeMode(ValueChangeMode.EAGER);
-        textField.setClearButtonVisible(true);
-        textField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
-        textField.setWidthFull();
-        textField.addValueChangeListener(e -> filterChangeConsumer.accept(e.getValue()));
-        return textField;
-    }
-
-    private static Component createDateRangeFilterHeader(RequestFilter requestFilter) {
+    private Component createDateRangeFilterHeader(RequestFilter requestFilter) {
         VerticalLayout dateLayout = new VerticalLayout();
         dateLayout.setPadding(false);
         dateLayout.setSpacing(false);
 
         DatePicker startPicker = new DatePicker();
-        startPicker.setPlaceholder("Başlangıç");
+        startPicker.setPlaceholder(getTranslation("requests.filter.startDate"));
         startPicker.setClearButtonVisible(true);
-        startPicker.setWidth("110px"); // Daha kompakt boyut
+        startPicker.setWidth("110px");
         startPicker.getStyle().set("margin-bottom", "4px");
         startPicker.addValueChangeListener(e -> {
             requestFilter.setStartDate(e.getValue() != null ? e.getValue().atStartOfDay() : null);
         });
 
         DatePicker endPicker = new DatePicker();
-        endPicker.setPlaceholder("Bitiş");
+        endPicker.setPlaceholder(getTranslation("requests.filter.endDate"));
         endPicker.setClearButtonVisible(true);
-        endPicker.setWidth("110px"); // Daha kompakt boyut
+        endPicker.setWidth("110px");
         endPicker.addValueChangeListener(e -> {
             requestFilter.setEndDate(e.getValue() != null ? e.getValue().atTime(23, 59, 59) : null);
         });
@@ -427,10 +449,11 @@ public class TalepDegerlendirme extends VerticalLayout {
     }
 
     private void configureCloseDialog() {
-        closeDialog.setHeaderTitle("Talebi Kapat / Reddet");
+        closeDialog.setHeaderTitle(getTranslation("helpdesk.triage.dialog.closeTitle"));
+        closeReason.setLabel(getTranslation("helpdesk.triage.dialog.closeReasonLabel"));
         closeReason.setWidthFull();
 
-        Button confirmCloseBtn = new Button("Talebi Kapat", event -> {
+        Button confirmCloseBtn = new Button(getTranslation("helpdesk.triage.dialog.closeConfirmBtn"), event -> {
             if (selectedRequest != null) {
                 selectedRequest.setStatus("KAPATILDI"); 
                 requestRepository.save(selectedRequest);
@@ -441,9 +464,9 @@ public class TalepDegerlendirme extends VerticalLayout {
                 systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() + " olan talebi kapattı. Gerekçe: " + closeReason.getValue());
 
                 if (selectedRequest.getCustomer() != null) {
-                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), "Talebiniz Kapatıldı", "Açıklama: " + closeReason.getValue());
+                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), getTranslation("helpdesk.triage.notif.requestClosedTitle"), getTranslation("helpdesk.triage.notif.descPrefix") + ": " + closeReason.getValue());
                 }
-                Notification.show("Talep kapatıldı.", 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                Notification.show(getTranslation("helpdesk.triage.notif.closed"), 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
                 closeDialog.close();
                 closeReason.clear();
                 selectedRequest = null;
@@ -451,7 +474,7 @@ public class TalepDegerlendirme extends VerticalLayout {
             }
         });
         confirmCloseBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelBtn = new Button("İptal", e -> closeDialog.close());
+        Button cancelBtn = new Button(getTranslation("requests.btn.cancel"), e -> closeDialog.close());
 
         closeDialog.getFooter().add(confirmCloseBtn, cancelBtn);
         closeDialog.add(closeReason);
@@ -459,27 +482,27 @@ public class TalepDegerlendirme extends VerticalLayout {
 
     private void configureComboBoxes() {
         impact.setItems(
-                "1 - Çok Düşük: Sadece tek kullanıcı.",
-                "2 - Düşük: Küçük bir ekip.",
-                "3 - Orta: Departman etkileniyor.",
-                "4 - Yüksek: Şirketin büyük kısmı.",
-                "5 - Kritik: Tüm sistem/müşteriler."
+                getTranslation("po.eval.impact.1"),
+                getTranslation("po.eval.impact.2"),
+                getTranslation("po.eval.impact.3"),
+                getTranslation("po.eval.impact.4"),
+                getTranslation("po.eval.impact.5")
         );
 
         urgency.setItems(
-                "1 - Çok Düşük: Kozmetik, acelesi yok.",
-                "2 - Düşük: İşlemi engellemiyor.",
-                "3 - Orta: İş akışını yavaşlatıyor.",
-                "4 - Yüksek: İş akışı durma noktasında.",
-                "5 - Çok Acil: Sistem tamamen durmuş."
+                getTranslation("po.eval.urgency.1"),
+                getTranslation("po.eval.urgency.2"),
+                getTranslation("po.eval.urgency.3"),
+                getTranslation("po.eval.urgency.4"),
+                getTranslation("po.eval.urgency.5")
         );
 
         effort.setItems(
-                "1 - Çok Kısa (1 Saat)",
-                "2 - Kısa (Yarım Gün)",
-                "3 - Orta (Birkaç Gün)",
-                "4 - Uzun (1 Hafta)",
-                "5 - Çok Uzun (Haftalar)"
+                getTranslation("po.eval.effort.1"),
+                getTranslation("po.eval.effort.2"),
+                getTranslation("po.eval.effort.3"),
+                getTranslation("po.eval.effort.4"),
+                getTranslation("po.eval.effort.5")
         );
     }
 
@@ -488,7 +511,7 @@ public class TalepDegerlendirme extends VerticalLayout {
             boolean secOverride = securityOverride.getValue();
             
             if (!secOverride && (urgency.getValue() == null || impact.getValue() == null || effort.getValue() == null)) {
-                Notification error = Notification.show("Lütfen Etki, Aciliyet ve Efor değerlerini seçin.", 3000, Notification.Position.MIDDLE);
+                Notification error = Notification.show(getTranslation("po.eval.error.selectFields"), 3000, Notification.Position.MIDDLE);
                 error.addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
             }
@@ -509,10 +532,10 @@ public class TalepDegerlendirme extends VerticalLayout {
                                      ", Etki: " + impactPuan + ", Efor: " + effortPuan + ")");
 
                 if (selectedRequest.getCustomer() != null) {
-                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), "Talebiniz Önceliklendirildi", "'" + selectedRequest.getTitle() + "' başlıklı talebiniz PO tarafından değerlendirildi.");
+                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), getTranslation("po.eval.notif.prioritizedTitle"), "'" + selectedRequest.getTitle() + "' " + getTranslation("po.eval.notif.prioritizedDesc"));
                 }
 
-                Notification.show("Talep başarıyla önceliklendirildi!", 3000, Notification.Position.TOP_CENTER);
+                Notification.show(getTranslation("po.eval.notif.prioritizedSuccess"), 3000, Notification.Position.TOP_CENTER);
 
                 urgency.clear();
                 impact.clear();
@@ -526,7 +549,7 @@ public class TalepDegerlendirme extends VerticalLayout {
                 Notification.show("Hata: " + e.getMessage(), 4000, Notification.Position.TOP_CENTER);
             }
         } else {
-            Notification.show("Lütfen listeden bir talep seçin.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("po.eval.error.selectRequest"), 3000, Notification.Position.MIDDLE);
         }
     }
 
@@ -534,13 +557,13 @@ public class TalepDegerlendirme extends VerticalLayout {
         if (selectedRequest != null) {
             
             if ("İş Akışına Dönüştü".equals(selectedRequest.getStatus())) {
-                Notification.show("Bu talep zaten yazılımcıya aktarılmış!", 4000, Notification.Position.TOP_CENTER)
+                Notification.show(getTranslation("po.eval.error.alreadyTransferred"), 4000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_WARNING);
                 return;
             }
             
             if (!"ONAYLANDI".equals(selectedRequest.getStatus())) {
-                Notification.show("Yetersiz Puan! Bir talebi yazılımcıya aktarabilmek için skorunun en az 50 olması veya 'Kritik Güvenlik' seçilmesi gerekir.", 5000, Notification.Position.TOP_CENTER)
+                Notification.show(getTranslation("po.eval.error.lowScore"), 5000, Notification.Position.TOP_CENTER)
                         .addThemeVariants(NotificationVariant.LUMO_ERROR);
                 return;
             }
@@ -554,10 +577,10 @@ public class TalepDegerlendirme extends VerticalLayout {
                 systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() + " olan talebi yazılım ekibine/göreve dönüştürdü.");
 
                 if (selectedRequest.getCustomer() != null) {
-                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), "Talebiniz Göreve Dönüştü", "'" + selectedRequest.getTitle() + "' başlıklı talebiniz onaylanıp yazılım ekibine aktarıldı.");
+                    notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), getTranslation("po.eval.notif.convertedTitle"), "'" + selectedRequest.getTitle() + "' " + getTranslation("po.eval.notif.convertedDesc"));
                 }
 
-                Notification success = Notification.show("Talep başarıyla göreve dönüştürüldü!", 3000, Notification.Position.TOP_CENTER);
+                Notification success = Notification.show(getTranslation("po.eval.notif.convertedSuccess"), 3000, Notification.Position.TOP_CENTER);
                 success.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
 
                 selectedRequest = null;
@@ -569,7 +592,7 @@ public class TalepDegerlendirme extends VerticalLayout {
                 error.addThemeVariants(NotificationVariant.LUMO_ERROR);
             }
         } else {
-            Notification.show("Lütfen listeden bir talep seçin.", 3000, Notification.Position.MIDDLE);
+            Notification.show(getTranslation("po.eval.error.selectRequest"), 3000, Notification.Position.MIDDLE);
         }
     }
 
@@ -581,8 +604,7 @@ public class TalepDegerlendirme extends VerticalLayout {
     private static class RequestFilter {
         private GridListDataView<RequestEntity> dataView;
         private String assignee = "";
-        private String title = "";
-        private String description = "";
+        private String searchTerm = "";
         private LocalDateTime startDate;
         private LocalDateTime endDate;
 
@@ -596,13 +618,8 @@ public class TalepDegerlendirme extends VerticalLayout {
             if (dataView != null) dataView.refreshAll();
         }
 
-        public void setTitle(String title) {
-            this.title = title != null ? title : "";
-            if (dataView != null) dataView.refreshAll();
-        }
-
-        public void setDescription(String description) {
-            this.description = description != null ? description : "";
+        public void setSearchTerm(String searchTerm) {
+            this.searchTerm = searchTerm != null ? searchTerm.toLowerCase().trim() : "";
             if (dataView != null) dataView.refreshAll();
         }
 
@@ -623,20 +640,26 @@ public class TalepDegerlendirme extends VerticalLayout {
             else if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) mappedAssignee = "Yazılım Ekibi";
 
             boolean matchesAssignee = matches(mappedAssignee, assignee);
-            boolean matchesTitle = matches(request.getTitle(), title);
-            boolean matchesDesc = matches(request.getDescription(), description);
+
+            boolean matchesSearch = true;
+            if (!searchTerm.isEmpty()) {
+                boolean inTitle = request.getTitle() != null && request.getTitle().toLowerCase().contains(searchTerm);
+                boolean inDesc = request.getDescription() != null && request.getDescription().toLowerCase().contains(searchTerm);
+                boolean inId = String.valueOf(request.getRequestId()).contains(searchTerm);
+                matchesSearch = inTitle || inDesc || inId;
+            }
+
             boolean matchesDate = true;
-            
             if (request.getCreatedAt() != null) {
                 if (startDate != null && request.getCreatedAt().isBefore(startDate)) matchesDate = false;
                 if (endDate != null && request.getCreatedAt().isAfter(endDate)) matchesDate = false;
             }
-            return matchesAssignee && matchesTitle && matchesDesc && matchesDate;
+            return matchesAssignee && matchesSearch && matchesDate;
         }
 
         private boolean matches(String value, String searchTerm) {
             return searchTerm == null || searchTerm.isEmpty() || 
-                   (value != null && value.toLowerCase().contains(searchTerm.toLowerCase()));
+                (value != null && value.toLowerCase().contains(searchTerm.toLowerCase()));
         }
     }
 }

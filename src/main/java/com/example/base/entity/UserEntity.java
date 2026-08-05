@@ -58,6 +58,12 @@ public class UserEntity {
     @Column(name = "ban_reason", length = 500)
     private String banReason;
 
+    @Column(name = "otp_code", length = 6)
+    private String otpCode;
+
+    @Column(name = "otp_expiry")
+    private LocalDateTime otpExpiry;
+
     public UserEntity() {
     }
 
@@ -128,6 +134,8 @@ public class UserEntity {
         this.registrationStatus = registrationStatus;
     }
 
+    
+
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
@@ -142,4 +150,10 @@ public class UserEntity {
 
     public String getBanReason() { return banReason; }
     public void setBanReason(String banReason) { this.banReason = banReason; }
+
+    public String getOtpCode() { return otpCode; }
+    public void setOtpCode(String otpCode) { this.otpCode = otpCode; }
+
+    public LocalDateTime getOtpExpiry() { return otpExpiry; }
+    public void setOtpExpiry(LocalDateTime otpExpiry) { this.otpExpiry = otpExpiry; }
 }

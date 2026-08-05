@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,13 +23,14 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "musteri-dashboard", layout = MainLayout.class)
 @RolesAllowed("CUSTOMER") 
-public class CustomerDashboardView extends VerticalLayout {
+public class CustomerDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
     private final UserRepository userRepository; 
@@ -42,7 +42,12 @@ public class CustomerDashboardView extends VerticalLayout {
 
         UI.getCurrent().getPage().addJavaScript("https://cdn.jsdelivr.net/npm/apexcharts");
 
-        H3 title = new H3("Taleplerim ve İşlem Özetim");
+        setSizeFull();
+        setPadding(true);
+        setSpacing(false);
+        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+
+        H3 title = new H3(getTranslation("customer.dashboard.headerTitle"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
 
         dashboardContainer.setWidthFull();
@@ -51,6 +56,11 @@ public class CustomerDashboardView extends VerticalLayout {
         
         add(title, dashboardContainer);
         refreshDashboard();
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("customer.dashboard.pageTitle");
     }
 
     private void refreshDashboard() {
@@ -91,13 +101,13 @@ public class CustomerDashboardView extends VerticalLayout {
         statRow.setWidthFull();
         statRow.getStyle().set("gap", "20px");
 
-        HorizontalLayout totalCard = createStatCard("Toplam Açtığım Talep", String.valueOf(totalRequests), VaadinIcon.TICKET.create(), primaryColor);
+        HorizontalLayout totalCard = createStatCard(getTranslation("customer.dashboard.stat.total"), String.valueOf(totalRequests), VaadinIcon.TICKET.create(), primaryColor);
         totalCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout reviewCard = createStatCard("İncelemede Olanlar", String.valueOf(inReviewRequests), VaadinIcon.SEARCH.create(), warningColor);
+        HorizontalLayout reviewCard = createStatCard(getTranslation("customer.dashboard.stat.inReview"), String.valueOf(inReviewRequests), VaadinIcon.SEARCH.create(), warningColor);
         reviewCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout closedCard = createStatCard("Çözülen Taleplerim", String.valueOf(closedRequests), VaadinIcon.CHECK_CIRCLE.create(), successColor);
+        HorizontalLayout closedCard = createStatCard(getTranslation("customer.dashboard.stat.resolved"), String.valueOf(closedRequests), VaadinIcon.CHECK_CIRCLE.create(), successColor);
         closedCard.getElement().getStyle().set("flex", "1");
 
         statRow.add(totalCard, reviewCard, closedCard);
@@ -105,7 +115,7 @@ public class CustomerDashboardView extends VerticalLayout {
         HorizontalLayout chartRow1 = new HorizontalLayout();
         chartRow1.setWidthFull();
         
-        VerticalLayout activityCard = createChartCard("Son 7 Günlük Talep Aktivitem", "customer-activity-chart", "250px");
+        VerticalLayout activityCard = createChartCard(getTranslation("customer.dashboard.chart.activity"), "customer-activity-chart", "250px");
         activityCard.getElement().getStyle().set("flex", "1"); 
         chartRow1.add(activityCard);
 
@@ -113,10 +123,10 @@ public class CustomerDashboardView extends VerticalLayout {
         chartRow2.setWidthFull();
         chartRow2.getStyle().set("gap", "20px");
 
-        VerticalLayout statusCard = createChartCard("Taleplerimin Durumu", "customer-status-chart", "250px");
+        VerticalLayout statusCard = createChartCard(getTranslation("customer.dashboard.chart.status"), "customer-status-chart", "250px");
         statusCard.getElement().getStyle().set("flex", "1");
 
-        VerticalLayout detailCard = createChartCard("Kategori / Süreç Dağılımı", "customer-detail-chart", "250px");
+        VerticalLayout detailCard = createChartCard(getTranslation("customer.dashboard.chart.distribution"), "customer-detail-chart", "250px");
         detailCard.getElement().getStyle().set("flex", "1.2");
 
         chartRow2.add(statusCard, detailCard);
@@ -131,7 +141,7 @@ public class CustomerDashboardView extends VerticalLayout {
         List<String> trendGunleri = new ArrayList<>();
         List<Long> acilanTalepTrend = new ArrayList<>();
         
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", new Locale("tr"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", UI.getCurrent().getLocale());
         LocalDate bugun = LocalDate.now();
 
         for (int i = 6; i >= 0; i--) {
@@ -145,26 +155,35 @@ public class CustomerDashboardView extends VerticalLayout {
             acilanTalepTrend.add(oGunAcilan);
         }
 
+        String labelResolved = getTranslation("customer.dashboard.legend.resolved");
+        String labelInProgress = getTranslation("customer.dashboard.legend.inProgress");
+        String seriesRequests = getTranslation("customer.dashboard.series.myRequests");
+        String seriesCount = getTranslation("customer.dashboard.series.requestCount");
+        String catResolved = getTranslation("customer.dashboard.category.resolved");
+        String catPending = getTranslation("customer.dashboard.category.pending");
+        String catTotal = getTranslation("customer.dashboard.category.total");
+
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
             
             "    /* 1. Donut Chart */" +
             "    var statusEl = document.querySelector('#customer-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['Çözüldü', 'İşlemde'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$6', '$7'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    /* 2. Area Chart */" +
             "    var actEl = document.querySelector('#customer-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: 'Açtığım Talepler', data: $4 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $5 }, fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] } } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$8', data: $4 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $5 }, fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] } } }).render(); }" +
 
             "    /* 3. Bar Chart (Detay) */" +
             "    var detailEl = document.querySelector('#customer-detail-chart');" +
-            "    if(detailEl) { detailEl.innerHTML = ''; new window.ApexCharts(detailEl, { series: [{ name: 'Talep Adedi', data: [$0, $1, $6] }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: ['Çözülen', 'Bekleyen', 'Toplam'] } }).render(); }" +
+            "    if(detailEl) { detailEl.innerHTML = ''; new window.ApexCharts(detailEl, { series: [{ name: '$9', data: [$0, $1, $6] }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: ['$10', '$11', '$12'] } }).render(); }" +
             
             "  }" +
             "}, 500);", 
             dataKapatilan, dataİslemde, color1, color2,
-            acilanTalepTrend, trendGunleri, (double) totalRequests
+            acilanTalepTrend, trendGunleri, (double) totalRequests,
+            labelResolved, labelInProgress, seriesRequests, seriesCount, catResolved, catPending, catTotal
         );
     }
 

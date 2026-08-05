@@ -6,7 +6,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 import com.example.base.repository.RequestRepository;
 import com.example.base.ui.MainScreen.MainLayout;
@@ -20,13 +19,14 @@ import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "po-dashboard", layout = MainLayout.class)
 @RolesAllowed("PO")
-public class PODashboardView extends VerticalLayout {
+public class PODashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
     private final VerticalLayout dashboardContainer = new VerticalLayout(); 
@@ -36,7 +36,12 @@ public class PODashboardView extends VerticalLayout {
 
         UI.getCurrent().getPage().addJavaScript("https://cdn.jsdelivr.net/npm/apexcharts");
 
-        H3 title = new H3("Proje Sorumlusu (PO) İş Yükü Paneli");
+        setSizeFull();
+        setPadding(true);
+        setSpacing(false);
+        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+
+        H3 title = new H3(getTranslation("po.dashboard.headerTitle"));
         title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
 
         dashboardContainer.setWidthFull();
@@ -45,6 +50,11 @@ public class PODashboardView extends VerticalLayout {
         
         add(title, dashboardContainer);
         refreshDashboard();
+    }
+
+    @Override
+    public String getPageTitle() {
+        return getTranslation("po.dashboard.pageTitle");
     }
 
     private void refreshDashboard() {
@@ -72,13 +82,13 @@ public class PODashboardView extends VerticalLayout {
         statRow.setWidthFull();
         statRow.getStyle().set("gap", "20px");
 
-        HorizontalLayout pendingCard = createStatCard("Bekleyen (Sevk Edilen)", String.valueOf(bekleyenGorevler), VaadinIcon.CLOCK.create(), warningColor);
+        HorizontalLayout pendingCard = createStatCard(getTranslation("po.dashboard.stat.pending"), String.valueOf(bekleyenGorevler), VaadinIcon.CLOCK.create(), warningColor);
         pendingCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout todayCard = createStatCard("Bugün Atananlar", String.valueOf(bugunGelenGorevler), VaadinIcon.CALENDAR_CLOCK.create(), infoColor);
+        HorizontalLayout todayCard = createStatCard(getTranslation("po.dashboard.stat.todayAssigned"), String.valueOf(bugunGelenGorevler), VaadinIcon.CALENDAR_CLOCK.create(), infoColor);
         todayCard.getElement().getStyle().set("flex", "1");
 
-        HorizontalLayout completedCard = createStatCard("Çözüme Kavuşturulan", String.valueOf(tamamlananGorevler), VaadinIcon.CHECK_SQUARE_O.create(), successColor);
+        HorizontalLayout completedCard = createStatCard(getTranslation("po.dashboard.stat.completed"), String.valueOf(tamamlananGorevler), VaadinIcon.CHECK_SQUARE_O.create(), successColor);
         completedCard.getElement().getStyle().set("flex", "1");
 
         statRow.add(pendingCard, todayCard, completedCard);
@@ -86,7 +96,7 @@ public class PODashboardView extends VerticalLayout {
         HorizontalLayout chartRow1 = new HorizontalLayout();
         chartRow1.setWidthFull();
         
-        VerticalLayout activityCard = createChartCard("Haftalık Çözüm Trendi", "po-activity-chart", "250px");
+        VerticalLayout activityCard = createChartCard(getTranslation("po.dashboard.chart.weeklyTrend"), "po-activity-chart", "250px");
         activityCard.getElement().getStyle().set("flex", "1"); 
         chartRow1.add(activityCard);
 
@@ -94,10 +104,10 @@ public class PODashboardView extends VerticalLayout {
         chartRow2.setWidthFull();
         chartRow2.getStyle().set("gap", "20px");
 
-        VerticalLayout statusCard = createChartCard("Mevcut İş Yükü Dağılımı", "po-status-chart", "250px");
+        VerticalLayout statusCard = createChartCard(getTranslation("po.dashboard.chart.workloadDist"), "po-status-chart", "250px");
         statusCard.getElement().getStyle().set("flex", "1");
 
-        VerticalLayout categoryCard = createChartCard("Kategoriye Göre Bekleyen İşler", "po-category-chart", "250px");
+        VerticalLayout categoryCard = createChartCard(getTranslation("po.dashboard.chart.categoryPending"), "po-category-chart", "250px");
         categoryCard.getElement().getStyle().set("flex", "1.5");
 
         chartRow2.add(statusCard, categoryCard);
@@ -114,11 +124,11 @@ public class PODashboardView extends VerticalLayout {
         try {
             List<Object[]> categoryData = requestRepository.countPendingRequestsByCategory();
             for (Object[] row : categoryData) {
-                barCategories.add(row[0] != null ? row[0].toString() : "Belirsiz");
+                barCategories.add(row[0] != null ? row[0].toString() : getTranslation("po.dashboard.unknown"));
                 barData.add(((Number) row[1]).longValue());
             }
         } catch (Exception e) {
-            barCategories.add("Veri Yok");
+            barCategories.add(getTranslation("po.dashboard.noData"));
             barData.add(0L);
         }
 
@@ -126,7 +136,7 @@ public class PODashboardView extends VerticalLayout {
         List<Long> gelenGorevTrend = new ArrayList<>();
         List<Long> cozumTrend = new ArrayList<>();
         
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", new Locale("tr"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd MMM", UI.getCurrent().getLocale());
         LocalDate bugun = LocalDate.now();
 
         for (int i = 6; i >= 0; i--) {
@@ -148,27 +158,34 @@ public class PODashboardView extends VerticalLayout {
             cozumTrend.add(oGunCozulen);
         }
 
+        String labelInReview = getTranslation("po.dashboard.legend.inReview");
+        String labelResolved = getTranslation("po.dashboard.legend.resolved");
+        String seriesAssignedToMe = getTranslation("po.dashboard.series.assignedToMe");
+        String seriesMyResolutions = getTranslation("po.dashboard.series.myResolutions");
+        String seriesPendingWork = getTranslation("po.dashboard.series.pendingWork");
+
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
             
             "    /* Donut Chart */" +
             "    var statusEl = document.querySelector('#po-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['İncelemede', 'Çözülen'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$4', '$5'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    /* Area Chart */" +
             "    var actEl = document.querySelector('#po-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: 'Bana Atananlar', data: $4 }, { name: 'Çözdüklerim', data: $5 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$6', data: $8 }, { name: '$7', data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
             
             "    /* Bar Chart */" +
             "    var barEl = document.querySelector('#po-category-chart');" +
-            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: 'Bekleyen İş', data: $7 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#EF4444'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $8 } }).render(); }" +
+            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: '$11', data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#EF4444'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
 
             "  }" +
             "}, 500);", 
             dataBekleyen, dataTamamlanan, color1, color2,
+            labelInReview, labelResolved, seriesAssignedToMe, seriesMyResolutions,
             gelenGorevTrend, cozumTrend, trendGunleri,
-            barData, barCategories
+            seriesPendingWork, barData, barCategories
         );
     }
 

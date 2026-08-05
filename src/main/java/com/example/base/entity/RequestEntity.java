@@ -30,13 +30,16 @@ public class RequestEntity {
     @JoinColumn(name = "customer_id", nullable = false, foreignKey = @ForeignKey(name = "fk_customer"))
     private UserEntity customer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_user_id", foreignKey = @ForeignKey(name = "fk_assigned_user"))
+    private UserEntity assignedUser;
+
     @Column(name = "title", nullable = false, length = 200)
     private String title;
 
     @Lob
     @Column(name = "description", nullable = false)
     private String description;
-
 
     @Column(name = "status", length = 30)
     private String status = "NEW";
@@ -80,93 +83,41 @@ public class RequestEntity {
         this.prioritization = prioritization;
     }
 
-    public Integer getRequestId() {
-        return requestId;
-    }
+    public Integer getRequestId() { return requestId; }
+    public void setRequestId(Integer requestId) { this.requestId = requestId; }
 
-    public void setRequestId(Integer requestId) {
-        this.requestId = requestId;
-    }
+    public UserEntity getCustomer() { return customer; }
+    public void setCustomer(UserEntity customer) { this.customer = customer; }
 
-    public UserEntity getCustomer() {
-        return customer;
-    }
+    public UserEntity getAssignedUser() { return assignedUser; }
+    public void setAssignedUser(UserEntity assignedUser) { this.assignedUser = assignedUser; }
 
-    public void setCustomer(UserEntity customer) {
-        this.customer = customer;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public String getDescription() {
-        return description;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public PrioritizationEntity getPrioritization() { return prioritization; }
+    public void setPrioritization(PrioritizationEntity prioritization) { this.prioritization = prioritization; }
 
-    public String getStatus() {
-        return status;
-    }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public byte[] getScreenshotData() { return screenshotData; }
+    public void setScreenshotData(byte[] screenshotData) { this.screenshotData = screenshotData; }
 
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
+    public String getScreenshotFileName() { return screenshotFileName; }
+    public void setScreenshotFileName(String screenshotFileName) { this.screenshotFileName = screenshotFileName; }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public PrioritizationEntity getPrioritization() {
-        return prioritization;
-    }
-
-    public void setPrioritization(PrioritizationEntity prioritization) {
-        this.prioritization = prioritization;
-    }
-
-    public String getCategory() {
-        return category;
-    }
-
-    public void setCategory(String category) {
-        this.category = category;
-    }
-
-    public byte[] getScreenshotData() {
-        return screenshotData;
-    }
-
-    public void setScreenshotData(byte[] screenshotData) {
-        this.screenshotData = screenshotData;
-    }
-
-    public String getScreenshotFileName() {
-        return screenshotFileName;
-    }
-
-    public void setScreenshotFileName(String screenshotFileName) {
-        this.screenshotFileName = screenshotFileName;
-    }
-
-    public String getScreenshotMimeType() {
-        return screenshotMimeType;
-    }
-
-    public void setScreenshotMimeType(String screenshotMimeType) {
-        this.screenshotMimeType = screenshotMimeType;
-    }
+    public String getScreenshotMimeType() { return screenshotMimeType; }
+    public void setScreenshotMimeType(String screenshotMimeType) { this.screenshotMimeType = screenshotMimeType; }
 
     public Integer getSatisfactionScore() { return satisfactionScore; }
     public void setSatisfactionScore(Integer satisfactionScore) { this.satisfactionScore = satisfactionScore; }
