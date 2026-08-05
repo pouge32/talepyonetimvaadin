@@ -239,16 +239,15 @@ public class TalepAcma extends VerticalLayout implements HasDynamicTitle {
         screenshotUpload.setDropAllowed(true);
         screenshotUpload.setWidthFull();
         
-        // İKON RENGİNİ KÖKTEN ÇÖZEN KISIM: Shadow DOM'un kullandığı renk değişkenlerini eziyoruz
         screenshotUpload.getStyle()
                 .set("margin-top", "8px")
                 .set("background", "var(--lumo-contrast-5pct)")
                 .set("border", "1px dashed var(--lumo-contrast-20pct)")
                 .set("border-radius", "10px")
                 .set("padding", "4px")
-                .set("--lumo-primary-color", "#333333")      // Vaadin ikonunun aldığı ana renk
-                .set("--lumo-primary-text-color", "#333333") // Vaadin ikonunun alternatif metin rengi
-                .set("color", "#333333");                    // Genel kalıtım rengi
+                .set("--lumo-primary-color", "#333333")  
+                .set("--lumo-primary-text-color", "#333333")
+                .set("color", "#333333");
 
         screenshotUpload.setUploadButton(new Button(getTranslation("request.create.uploadBtn"), VaadinIcon.UPLOAD.create()));
 
@@ -261,7 +260,6 @@ public class TalepAcma extends VerticalLayout implements HasDynamicTitle {
                 .set("user-select", "none");
         screenshotUpload.setDropLabel(dropLabel);
 
-        // Eski "executeJs" JavaScript bloğunu tamamen kaldırdık, artık ona ihtiyaç yok.
 
         screenshotUpload.addSucceededListener(event -> {
             try (InputStream inputStream = uploadBuffer.getInputStream()) {

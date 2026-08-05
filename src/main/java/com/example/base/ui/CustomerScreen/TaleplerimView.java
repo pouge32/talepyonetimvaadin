@@ -138,7 +138,6 @@ public class TaleplerimView extends VerticalLayout implements HasDynamicTitle {
     private void configureGrid() {
         Grid.Column<RequestEntity> idColumn = grid.addColumn(RequestEntity::getRequestId).setHeader(getTranslation("requests.grid.id")).setAutoWidth(true).setFlexGrow(0);
         
-        // Arama kutusunun rahat sığması için flexGrow 2 yapıldı
         Grid.Column<RequestEntity> titleColumn = grid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("requests.grid.title")).setFlexGrow(2);
         Grid.Column<RequestEntity> descColumn = grid.addColumn(RequestEntity::getDescription).setHeader(getTranslation("requests.grid.desc")).setFlexGrow(2);
         
@@ -190,7 +189,6 @@ public class TaleplerimView extends VerticalLayout implements HasDynamicTitle {
 
         HeaderRow headerRow = grid.appendHeaderRow();
         
-        // Hata yaratan join() metodu kaldırıldı. Sütunlar kendi hizasında bırakıldı.
         headerRow.getCell(idColumn).setComponent(new Span());
         headerRow.getCell(titleColumn).setComponent(searchField);
         headerRow.getCell(descColumn).setComponent(new Span());

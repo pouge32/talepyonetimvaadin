@@ -34,7 +34,6 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
     public LoginView(SystemLogService systemLogService) {
         this.systemLogService = systemLogService;
         
-        // Oturumda kayıtlı bir dil tercihi varsa uygula
         Locale sessionLocale = (Locale) VaadinSession.getCurrent().getAttribute("session_locale");
         if (sessionLocale != null) {
             UI.getCurrent().setLocale(sessionLocale);
