@@ -30,27 +30,28 @@ public class RequestService {
     private final WorkflowRepository workflowRepository;
     private final NotificationService notificationService;
     private final SystemLogService systemLogService;
+    private final SettingsService settingsService;
 
     public RequestService(RequestRepository requestRepository,
                            PrioritizationRepository prioritizationRepository,
                            UserRepository userRepository,
                            WorkflowRepository workflowRepository,
                            NotificationService notificationService,
-                           SystemLogService systemLogService) {
+                           SystemLogService systemLogService,
+                           SettingsService settingsService) {
         this.requestRepository = requestRepository;
         this.prioritizationRepository = prioritizationRepository;
         this.userRepository = userRepository;
         this.workflowRepository = workflowRepository;
         this.notificationService = notificationService;
         this.systemLogService = systemLogService;
+        this.settingsService = settingsService;
     }
 
     public List<RequestEntity> getMyRequestsForCurrentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
         UserEntity customer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException("Kullanıcı bulunamadı: " + email));
-
         return requestRepository.findByCustomer_UserId(customer.getUserId());
     }
 
@@ -80,28 +81,23 @@ public class RequestService {
         }
 
         RequestEntity savedRequest = requestRepository.save(request);
-        
         autoAssignRequest(savedRequest);
-        
         return savedRequest;
     }
 
     @Transactional
     public void autoAssignRequest(RequestEntity request) {
         List<UserEntity> helpdeskUsers = userRepository.findByRole(Role.HELPDESK);
-        
         if (helpdeskUsers.isEmpty()) {
             return; 
         }
 
         UserEntity leastLoadedUser = null;
         long minLoad = Long.MAX_VALUE;
-
         List<String> activeStatuses = Arrays.asList("NEW", "INCELEMEDE");
 
         for (UserEntity user : helpdeskUsers) {
             long currentLoad = requestRepository.countByAssignedUserAndStatusIn(user, activeStatuses);
-            
             if (currentLoad < minLoad) {
                 minLoad = currentLoad;
                 leastLoadedUser = user;
@@ -111,7 +107,6 @@ public class RequestService {
         if (leastLoadedUser != null) {
             request.setAssignedUser(leastLoadedUser);
             requestRepository.save(request);
-
             notificationService.notifyUser(leastLoadedUser.getUserId(), 
                 "Sistem Tarafından Yeni Görev Atandı", 
                 "Yük dengeleme algoritması tarafından #" + request.getRequestId() + " numaralı talep size zimmetlenmiştir.");
@@ -144,7 +139,8 @@ public class RequestService {
         int score = calculateScore(urgency, impact, effort, isSecurityOverride);
         prioritization.setPriorityScore(score);
 
-        if (score >= 50 || isSecurityOverride) {
+        int threshold = settingsService.getPoAutoApprovalThreshold();
+        if (score >= threshold || isSecurityOverride) {
             request.setStatus("ONAYLANDI");
         } else {
             request.setStatus("INCELEMEDE");
@@ -176,20 +172,20 @@ public class RequestService {
         }
     }
 
-    private int calculateScore(int urgency, int impact, int effort, boolean securityOverride) {
+    public int calculateScore(int urgency, int impact, int effort, boolean securityOverride) {
         if (securityOverride) {
             return 999;
         }
-        float value = (impact * 2.0f) + urgency;
-        return Math.round((value * 10.0f) / effort);
+        float value = (impact * 2.0f) * urgency;
+        return Math.round(value / effort);
     }
 
     public String getPriorityLabel(int score) {
-        if (score >= 999) return "ACİL / GÜVENLİK";
-        if (score >= 100) return "KRİTİK";
-        if (score >= 50) return "YÜKSEK";
-        if (score >= 25) return "ORTA";
-        return "DÜŞÜK";
+        if (score >= 999) return "ACİL / GÜVENLİK"; 
+        if (score >= 20)  return "KRİTİK";         
+        if (score >= 10)  return "YÜKSEK";         
+        if (score >= 5)   return "ORTA"; 
+        return "DÜŞÜK";                               
     }
 
     public List<RequestEntity> getNewRequests() {
@@ -250,6 +246,7 @@ public class RequestService {
         RequestEntity request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new EntityNotFoundException("Talep bulunamadı: " + requestId));
 
+        request.setStatus("KAPATILDI");
         request.setSatisfactionScore(score);
         request.setSatisfactionComment(comment);
         requestRepository.save(request);
@@ -278,7 +275,6 @@ public class RequestService {
 
         for (RequestEntity req : openRequests) {
             String existingText = (req.getTitle() + " " + req.getDescription()).toLowerCase();
-            
             if (calculateTextSimilarity(newText, existingText) > 0.40) {
                 systemLogService.log("Benzer talep tespit edildi. Mevcut Talep ID: " + req.getRequestId());
                 return true;
@@ -305,5 +301,25 @@ public class RequestService {
         union.addAll(set2);
 
         return (double) intersection.size() / union.size();
+    }
+
+    @Transactional
+    public List<RequestEntity> getAllRequestsForGrid() {
+        List<RequestEntity> requests = requestRepository.findAll();
+        
+        requests.forEach(req -> {
+            if (req.getAssignedUser() != null) {
+                req.getAssignedUser().getRole(); 
+                req.getAssignedUser().getNameSurname();
+            }
+            if (req.getCustomer() != null) {
+                req.getCustomer().getNameSurname();
+            }
+            if (req.getPrioritization() != null) {
+                req.getPrioritization().getPriorityScore();
+            }
+        });
+        
+        return requests;
     }
 }

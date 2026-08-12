@@ -45,6 +45,12 @@ public class MessageEntity {
     @Column(name = "sent_at")
     private LocalDateTime sentAt = LocalDateTime.now();
 
+    @Lob
+    @Column(name = "file_data")
+    private byte[] fileData;
+
+    private String fileName;
+
     public MessageEntity() {
     }
 
@@ -80,4 +86,10 @@ public class MessageEntity {
     public Integer getIsRead() {return isRead;}
 
     public void setIsRead(Integer isRead) {this.isRead = isRead;}
+
+    public byte[] getFileData() { return fileData; }
+    public void setFileData(byte[] fileData) { this.fileData = fileData; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
 }

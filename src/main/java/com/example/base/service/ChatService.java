@@ -100,4 +100,23 @@ public class ChatService {
         }
         messageRepository.saveAll(unreadMessages);
     }
+
+    public void sendFileMessage(Integer requestId, Integer senderId, Integer receiverId, String fileName, byte[] fileData) {
+        RequestEntity request = requestRepository.findById(requestId).orElseThrow();
+        UserEntity sender = userRepository.findById(senderId).orElseThrow();
+        UserEntity receiver = userRepository.findById(receiverId).orElseThrow();
+
+        MessageEntity message = new MessageEntity();
+        message.setRequest(request);
+        message.setSender(sender);
+        message.setReceiver(receiver);
+        message.setFileName(fileName);
+        message.setFileData(fileData);
+        message.setMessageBody("📁 [Dosya Eki]: " + fileName);
+        message.setSentAt(java.time.LocalDateTime.now());
+        message.setIsRead(0);
+
+        messageRepository.save(message);
+        ChatBroadcaster.broadcast(requestId, message);
+    }
 }

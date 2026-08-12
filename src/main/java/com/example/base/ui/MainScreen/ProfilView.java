@@ -2,15 +2,19 @@ package com.example.base.ui.MainScreen;
 
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.UserRepository;
-import com.example.base.service.SystemLogService; 
+import com.example.base.service.SystemLogService;
+import com.example.base.service.UserService;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent.JustifyContentMode;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
@@ -36,19 +40,22 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Route(value = "profil", layout = MainLayout.class)
-@RolesAllowed(value = {"CUSTOMER", "HELPDESK", "PO", "ADMIN","PROGRAMMER"})
+@RolesAllowed(value = {"CUSTOMER", "HELPDESK", "PO", "ADMIN", "PROGRAMMER", "GODPANEL"})
 public class ProfilView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final SystemLogService systemLogService;
+    private final UserService userService;
     private UserEntity currentUser;
     private String newPhotoUrl = null;
 
-    public ProfilView(UserRepository userRepository, PasswordEncoder passwordEncoder, SystemLogService systemLogService) {
+    public ProfilView(UserRepository userRepository, PasswordEncoder passwordEncoder, 
+                      SystemLogService systemLogService, UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.systemLogService = systemLogService;
+        this.userService = userService;
 
         setSizeFull();
         setSpacing(true);
@@ -161,9 +168,21 @@ public class ProfilView extends VerticalLayout implements HasDynamicTitle {
             }
         });
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        saveButton.getStyle().set("margin-top", "20px");
 
-        add(title, subtitle, formLayout, photoLabel, avatarLayout, saveButton);
+        HorizontalLayout actionButtons = new HorizontalLayout();
+        actionButtons.getStyle().set("margin-top", "20px");
+        actionButtons.setWidthFull();
+        actionButtons.setMaxWidth("500px");
+        actionButtons.setJustifyContentMode(JustifyContentMode.BETWEEN);
+
+        if (currentUser != null) {
+            Button kvkkButton = buildKvkkDeleteButton(currentUser);
+            actionButtons.add(saveButton, kvkkButton);
+        } else {
+            actionButtons.add(saveButton);
+        }
+
+        add(title, subtitle, formLayout, photoLabel, avatarLayout, actionButtons);
     }
 
     @Override
@@ -187,5 +206,47 @@ public class ProfilView extends VerticalLayout implements HasDynamicTitle {
                 avatar.setImageResource(resource);
             }
         }
+    }
+
+    private Button buildKvkkDeleteButton(UserEntity user) {
+        Button deleteDataBtn = new Button(getTranslation("profile.kvkk.deleteBtn"), VaadinIcon.TRASH.create());
+        deleteDataBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+
+        if (Boolean.TRUE.equals(user.getDeletionRequested())) {
+            deleteDataBtn.setEnabled(false);
+            deleteDataBtn.setText(getTranslation("profile.kvkk.pendingBtn")); 
+        }
+
+        deleteDataBtn.addClickListener(e -> {
+            ConfirmDialog dialog = new ConfirmDialog();
+            dialog.setHeader(getTranslation("profile.kvkk.dialog.header"));
+            dialog.setText(getTranslation("profile.kvkk.dialog.text"));
+            
+            dialog.setCancelable(true);
+            dialog.setCancelText(getTranslation("profile.kvkk.dialog.cancel"));
+            
+            dialog.setConfirmText(getTranslation("profile.kvkk.dialog.confirm"));
+            dialog.setConfirmButtonTheme("error primary");
+
+            dialog.addConfirmListener(confirmEvent -> {
+                try {
+                    userService.requestAccountDeletion(user.getUserId());
+                    
+                    Notification.show(getTranslation("profile.kvkk.notif.success"), 5000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                    
+                    deleteDataBtn.setEnabled(false);
+                    deleteDataBtn.setText(getTranslation("profile.kvkk.pendingBtn"));
+                    
+                } catch (Exception ex) {
+                    Notification.show("Hata: " + ex.getMessage(), 3000, Notification.Position.TOP_CENTER)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                }
+            });
+
+            dialog.open();
+        });
+
+        return deleteDataBtn;
     }
 }

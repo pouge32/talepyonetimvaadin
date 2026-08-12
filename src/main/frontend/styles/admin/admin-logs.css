@@ -1,0 +1,48 @@
+/* --- ADMIN LOGS VIEW STYLES --- */
+
+.admin-logs-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.admin-logs-main-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 100px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.admin-logs-title {
+    margin-top: 0;
+    font-size: 20px;
+}
+
+.admin-logs-subtitle {
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-s);
+}
+
+.admin-logs-filter-layout {
+    flex-wrap: nowrap;
+    margin-bottom: 12px;
+    gap: 8px;
+}
+
+.admin-logs-grid {
+    flex-grow: 1;
+}
+
+.admin-logs-pagination-bar {
+    padding-top: 10px;
+}
+
+.admin-logs-page-info {
+    font-weight: bold;
+    margin: 0 20px;
+}

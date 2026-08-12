@@ -1,24 +1,32 @@
 package com.example.base.ui.PoScreen;
 
 import java.io.ByteArrayInputStream;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import com.example.base.entity.PrioritizationEntity;
 import com.example.base.entity.RequestEntity;
 import com.example.base.entity.UserEntity;
+import com.example.base.entity.WorkflowEntity;
+import com.example.base.repository.PrioritizationRepository;
 import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
+import com.example.base.repository.WorkflowRepository;
 import com.example.base.service.ChatService;
+import com.example.base.service.InternalCommentService;
 import com.example.base.service.NotificationService;
 import com.example.base.service.RequestService;
 import com.example.base.service.SettingsService;
-import com.example.base.service.SystemLogService; 
-import com.example.base.ui.Class.TalepChat;
+import com.example.base.service.SystemLogService;
+import com.example.base.service.TeamChatBroadcaster;
+import com.example.base.ui.Chat.TalepChat;
 import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.badge.Badge;
@@ -28,6 +36,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker; 
+import com.vaadin.flow.component.datepicker.DatePickerVariant;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
@@ -41,7 +50,11 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.tabs.Tab;
+import com.vaadin.flow.component.tabs.Tabs;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.textfield.TextFieldVariant;
@@ -53,7 +66,7 @@ import com.vaadin.flow.server.StreamResource;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "talep-degerlendir", layout = MainLayout.class)
-@RolesAllowed("PO")
+@RolesAllowed({"PO", "GODPANEL"})
 public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestService requestService;
@@ -61,8 +74,13 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
     private final ChatService chatService;
     private final UserRepository userRepository;
     private final RequestRepository requestRepository;
+    private final PrioritizationRepository prioritizationRepository;
     private final SystemLogService systemLogService;
     private final SettingsService settingsService;
+    private final WorkflowRepository workflowRepository; 
+    
+    private final InternalCommentService internalCommentService;
+    private final TeamChatBroadcaster teamChatBroadcaster;
 
     private Grid<RequestEntity> grid = new Grid<>(RequestEntity.class, false);
     private GridListDataView<RequestEntity> dataView;
@@ -83,23 +101,40 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
     private final TextArea closeReason = new TextArea();
 
     private RequestEntity selectedRequest;
+    private UserEntity currentUser;
 
     public TalepDegerlendirme(RequestService requestService, NotificationService notificationService,
-                             ChatService chatService, UserRepository userRepository,
-                             RequestRepository requestRepository, SystemLogService systemLogService,
-                             SettingsService settingsService) {
+                               ChatService chatService, UserRepository userRepository,
+                               RequestRepository requestRepository, 
+                               PrioritizationRepository prioritizationRepository,
+                               SystemLogService systemLogService,
+                               SettingsService settingsService,
+                               WorkflowRepository workflowRepository,
+                               InternalCommentService internalCommentService,
+                               TeamChatBroadcaster teamChatBroadcaster) { 
         this.requestService = requestService;
         this.notificationService = notificationService;
         this.chatService = chatService;
         this.userRepository = userRepository;
         this.requestRepository = requestRepository;
+        this.prioritizationRepository = prioritizationRepository;
         this.systemLogService = systemLogService;
         this.settingsService = settingsService;
+        this.workflowRepository = workflowRepository; 
+        this.internalCommentService = internalCommentService;
+        this.teamChatBroadcaster = teamChatBroadcaster;
 
         setSizeFull();
         setPadding(true);
         setSpacing(false);
         getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String email = (auth != null) ? auth.getName() : "";
+        currentUser = userRepository.findByEmail(email).orElse(null);
+
+        boolean isGod = currentUser != null && currentUser.getRole() != null && "GODPANEL".equals(currentUser.getRole().name());
+        requestFilter.setGodPanel(isGod);
 
         Div mainContainer = new Div();
         mainContainer.setWidthFull();
@@ -116,14 +151,36 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
                 .set("display", "flex")
                 .set("flex-direction", "column");
 
-        Div header = new Div();
-        header.setWidthFull();
-        header.getStyle().set("margin-bottom", "16px").set("flex-shrink", "0");
+        HorizontalLayout headerLayout = new HorizontalLayout();
+        headerLayout.setWidthFull();
+        headerLayout.setAlignItems(FlexComponent.Alignment.BASELINE);
+        headerLayout.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        headerLayout.getStyle().set("margin-bottom", "16px").set("flex-shrink", "0");
+
+        VerticalLayout textLayout = new VerticalLayout();
+        textLayout.setPadding(false);
+        textLayout.setSpacing(false);
         H2 heading = new H2(getTranslation("po.eval.heading"));
         heading.getStyle().set("margin", "0 0 4px 0").set("color", "var(--lumo-header-text-color)");
         Paragraph subtitle = new Paragraph(getTranslation("po.eval.subtitle"));
         subtitle.getStyle().set("margin", "0").set("color", "var(--lumo-secondary-text-color)").set("font-size", "var(--lumo-font-size-s)");
-        header.add(heading, subtitle);
+        textLayout.add(heading, subtitle);
+
+        Tab tabMine = new Tab(getTranslation("helpdesk.triage.tab.assignedToMe", "Bana Atanan Görevler"));
+        Tab tabAll = new Tab(getTranslation("helpdesk.triage.tab.allPool", "Tüm Havuz"));
+        Tabs tabs = new Tabs(tabMine, tabAll);
+        
+        tabs.getStyle().set("flex-shrink", "0");
+
+        tabs.addSelectedChangeListener(event -> {
+            if (event.getSelectedTab().equals(tabMine) && currentUser != null) {
+                requestFilter.setAssignedUserIdFilter(currentUser.getUserId());
+            } else {
+                requestFilter.setAssignedUserIdFilter(null);
+            }
+        });
+
+        headerLayout.add(textLayout, tabs);
 
         grid.setWidthFull();
         grid.getStyle()
@@ -134,6 +191,10 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
         configureGrid();
         configureComboBoxes();
         configureCloseDialog();
+
+        if (currentUser != null) {
+            requestFilter.setAssignedUserIdFilter(currentUser.getUserId());
+        }
 
         scoreButton.setText(getTranslation("po.eval.btn.score"));
         scoreButton.addClickListener(event -> evaluateRequest());
@@ -170,7 +231,7 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
         secim.setCloseOnOutsideClick(false);
         secim.setWidth("450px");
 
-        mainContainer.add(header, grid);
+        mainContainer.add(headerLayout, grid);
         add(mainContainer);
         refreshGrid();
     }
@@ -187,35 +248,83 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
 
     private void configureGrid() {
         Grid.Column<RequestEntity> assigneeCol = grid.addColumn(request -> {
-            if ("NEW".equals(request.getStatus())) return getTranslation("po.eval.team.support");
-            if ("INCELEMEDE".equals(request.getStatus())) return getTranslation("po.eval.team.po");
-            if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) return getTranslation("po.eval.team.software");
+            if ("NEW".equals(request.getStatus()) || "DESTEK_KONTROL".equals(request.getStatus())) return "Destek";
+            if ("INCELEMEDE".equals(request.getStatus()) || "PO_KONTROL".equals(request.getStatus())) return "PO";
+            if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) return "Yazılım";
             return request.getStatus();
-        }).setHeader(getTranslation("po.eval.grid.assignee")).setAutoWidth(true).setFlexGrow(0);
+        }).setHeader("Sorumlu").setWidth("95px").setFlexGrow(0);
 
-        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("po.eval.grid.title")).setFlexGrow(1);
-        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader(getTranslation("po.eval.grid.desc")).setFlexGrow(2);
+        Grid.Column<RequestEntity> titleCol = grid.addColumn(RequestEntity::getTitle).setHeader("Başlık").setFlexGrow(1);
+        Grid.Column<RequestEntity> descCol = grid.addColumn(RequestEntity::getDescription).setHeader("Detay").setFlexGrow(2);
+        
+        Grid.Column<RequestEntity> effortCol = grid.addColumn(request -> {
+            try {
+                WorkflowEntity workflow = workflowRepository.findByRequest_RequestId(request.getRequestId()).orElse(null);
+                if (workflow != null && workflow.getActualEffortHours() != null) {
+                    return workflow.getActualEffortHours() + " S";
+                }
+            } catch (Exception e) {}
+            return "-";
+        }).setHeader("Efor").setWidth("75px").setFlexGrow(0);
         
         Grid.Column<RequestEntity> dateCol = grid.addColumn(request -> 
-            request.getCreatedAt() != null ? request.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "-"
-        ).setHeader(getTranslation("po.eval.grid.date")).setAutoWidth(true).setFlexGrow(0);
+            request.getCreatedAt() != null ? request.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yy HH:mm")) : "-"
+        ).setHeader("Tarih").setWidth("120px").setFlexGrow(0);
 
-        grid.addComponentColumn(this::createScreenshotButton).setHeader(getTranslation("po.eval.grid.screenshot")).setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<RequestEntity> screenshotCol = grid.addComponentColumn(this::createScreenshotButton).setHeader("Görsel").setWidth("80px").setFlexGrow(0);
         
-        grid.addColumn(request -> requestService.getRequestPriority(request.getRequestId()))
-                .setHeader(getTranslation("po.eval.grid.score")).setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<RequestEntity> scoreCol = grid.addColumn(request -> requestService.getRequestPriority(request.getRequestId()))
+                .setHeader("Puan").setWidth("85px").setFlexGrow(0);
 
-        grid.addComponentColumn(request -> {
+        Grid.Column<RequestEntity> evalCol = grid.addComponentColumn(request -> {
+            if ("PO_KONTROL".equals(request.getStatus())) {
+                Button qaBtn = new Button("Kontrol", VaadinIcon.CHECK_SQUARE_O.create());
+                qaBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
+                qaBtn.addClickListener(e -> openQaDialog(request));
+                return qaBtn;
+            }
+
+            Button evalBtn = new Button("Aksiyon", VaadinIcon.SLIDERS.create());
+            evalBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
+            evalBtn.addClickListener(e -> {
+                selectedRequest = request;
+                try {
+                    PrioritizationEntity p = prioritizationRepository.findByRequest_RequestId(request.getRequestId()).orElse(null);
+                    if (p != null) {
+                        if (p.getImpact() != null) impact.setValue(getTranslation("po.eval.impact." + p.getImpact()));
+                        else impact.clear();
+
+                        if (p.getUrgency() != null) urgency.setValue(getTranslation("po.eval.urgency." + p.getUrgency()));
+                        else urgency.clear();
+
+                        if (p.getEffort() != null) effort.setValue(getTranslation("po.eval.effort." + p.getEffort()));
+                        else effort.clear();
+
+                        securityOverride.setValue(p.getIsSecurityOverride() != null && p.getIsSecurityOverride() == 1);
+                    } else {
+                        impact.clear();
+                        urgency.clear();
+                        effort.clear();
+                        securityOverride.setValue(false);
+                    }
+                } catch (Exception ex) {
+                    impact.clear();
+                    urgency.clear();
+                    effort.clear();
+                    securityOverride.setValue(false);
+                }
+                secim.open();
+            });
+            return evalBtn;
+        }).setHeader("İşlem").setWidth("115px").setFlexGrow(0);
+
+        Grid.Column<RequestEntity> chatCol = grid.addComponentColumn(request -> {
             Button chatButton = new Button(VaadinIcon.CHAT.create());
             chatButton.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
             chatButton.getElement().setProperty("title", getTranslation("po.eval.tooltip.chat"));
 
             Div container = new Div(chatButton);
             container.getStyle().set("position", "relative").set("display", "inline-block");
-
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            String email = (auth != null) ? auth.getName() : "";
-            UserEntity currentUser = userRepository.findByEmail(email).orElse(null);
 
             if (currentUser != null) {
                 int unreadCount = chatService.getUnreadMessageCount(request.getRequestId(), currentUser.getUserId());
@@ -230,28 +339,28 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
 
             chatButton.addClickListener(e -> e.getSource().getUI().ifPresent(ui -> ui.navigate(TalepChat.class, request.getRequestId())));
             return container;
-        }).setHeader(getTranslation("po.eval.grid.chat")).setAutoWidth(true).setFlexGrow(0);
+        }).setHeader("Sohbet").setWidth("75px").setFlexGrow(0);
 
-        grid.addComponentColumn(request -> {
+        Grid.Column<RequestEntity> historyCol = grid.addComponentColumn(request -> {
             Button historyBtn = new Button(VaadinIcon.TIME_BACKWARD.create());
             historyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
             historyBtn.getElement().setProperty("title", getTranslation("po.eval.tooltip.history"));
             historyBtn.addClickListener(e -> openHistoryDialog(request));
             return historyBtn;
-        }).setHeader(getTranslation("po.eval.grid.history")).setAutoWidth(true).setFlexGrow(0);
+        }).setHeader("Geçmiş").setWidth("80px").setFlexGrow(0);
 
-        grid.addComponentColumn(this::createRatingColumn).setHeader(getTranslation("po.eval.grid.rating")).setAutoWidth(true).setFlexGrow(0);
-        grid.addComponentColumn(this::createSlaBadge).setHeader(getTranslation("po.eval.grid.sla")).setAutoWidth(true).setFlexGrow(0);
+        Grid.Column<RequestEntity> ratingCol = grid.addComponentColumn(this::createRatingColumn).setHeader("Sonuç").setWidth("80px").setFlexGrow(0);
+        Grid.Column<RequestEntity> slaCol = grid.addComponentColumn(this::createSlaBadge).setHeader("SLA").setWidth("105px").setFlexGrow(0);
 
-        grid.asSingleSelect().addValueChangeListener(event -> {
-            selectedRequest = event.getValue();
-            if (selectedRequest != null) {
-                secim.open();
+        grid.addItemDoubleClickListener(event -> {
+            RequestEntity request = event.getItem();
+            if (request != null) {
+                openRequestDetailDialog(request);
             }
         });
 
         TextField searchField = new TextField();
-        searchField.setPlaceholder(getTranslation("po.eval.filter.searchPlaceholder"));
+        searchField.setPlaceholder("Ara...");
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
         searchField.setClearButtonVisible(true);
@@ -260,46 +369,148 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
         searchField.addValueChangeListener(e -> requestFilter.setSearchTerm(e.getValue()));
 
         HeaderRow headerRow = grid.appendHeaderRow();
-        headerRow.getCell(assigneeCol).setComponent(createComboBoxFilterHeader(getTranslation("po.eval.filter.assigneePlaceholder"), requestFilter::setAssignee));
+        headerRow.getCell(assigneeCol).setComponent(createComboBoxFilterHeader("Filtre", requestFilter::setAssignee));
         headerRow.getCell(titleCol).setComponent(searchField);
         headerRow.getCell(descCol).setComponent(new Span());
+        headerRow.getCell(effortCol).setComponent(new Span()); 
         headerRow.getCell(dateCol).setComponent(createDateRangeFilterHeader(requestFilter));
+        headerRow.getCell(screenshotCol).setComponent(new Span());
+        headerRow.getCell(scoreCol).setComponent(new Span());
+        headerRow.getCell(evalCol).setComponent(new Span());
+        headerRow.getCell(chatCol).setComponent(new Span());
+        headerRow.getCell(historyCol).setComponent(new Span());
+        headerRow.getCell(ratingCol).setComponent(new Span());
+        headerRow.getCell(slaCol).setComponent(new Span());
+    }
+
+    private void openQaDialog(RequestEntity request) {
+        Dialog qaDialog = new Dialog();
+        qaDialog.setHeaderTitle("Yazılım Test & Onay");
+        
+        TextArea feedbackArea = new TextArea("Geri Bildirim / Not");
+        feedbackArea.setWidthFull();
+        feedbackArea.setPlaceholder("Test sonucuna göre notunuzu buraya yazın...");
+
+        Button approveBtn = new Button("Onayla (Destek Ekibine Aktar)", e -> {
+            request.setStatus("DESTEK_KONTROL");
+            requestRepository.save(request);
+            
+            String poEmail = (currentUser != null) ? currentUser.getEmail() : "";
+            systemLogService.log("PO (" + poEmail + "), ID: " + request.getRequestId() + " olan talebin yazılım testini ONAYLADI ve Destek ekibine aktardı. Not: " + feedbackArea.getValue());
+            
+            Notification.show("Talep test onayı alarak Destek Ekibine aktarıldı.", 3000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+            qaDialog.close();
+            refreshGrid();
+        });
+        approveBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_PRIMARY);
+
+        Button rejectBtn = new Button("Reddet (Yazılımcıya Geri Gönder)", e -> {
+            request.setStatus("İş Akışına Dönüştü"); 
+            requestRepository.save(request);
+            
+            String poEmail = (currentUser != null) ? currentUser.getEmail() : "";
+            systemLogService.log("PO (" + poEmail + "), ID: " + request.getRequestId() + " olan talebin yazılım testini REDDETTİ. Gerekçe: " + feedbackArea.getValue());
+            
+            Notification.show("Talep reddedilerek düzeltilmesi için Yazılım Ekibine geri gönderildi.", 4000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_ERROR);
+            qaDialog.close();
+            refreshGrid();
+        });
+        rejectBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelBtn = new Button("İptal", e -> qaDialog.close());
+
+        qaDialog.add(new Paragraph("Yazılım ekibi bu görevi tamamladığını belirtti. Lütfen test edip onay durumunu seçin."), feedbackArea);
+        qaDialog.getFooter().add(approveBtn, rejectBtn, cancelBtn);
+        qaDialog.open();
+    }
+
+    private void openRequestDetailDialog(RequestEntity request) {
+        Dialog detailDialog = new Dialog();
+        detailDialog.setHeaderTitle("Talep Detayı #" + request.getRequestId());
+        detailDialog.setWidth("650px");
+        detailDialog.setMaxHeight("85vh");
+
+        Tabs tabs = new Tabs();
+        Tab detayTab = new Tab("Talep Bilgileri");
+        Tab yazismaTab = new Tab("İç Yazışma (Takım)");
+        tabs.add(detayTab, yazismaTab);
+
+        VerticalLayout detayLayout = new VerticalLayout();
+        detayLayout.setPadding(false);
+        detayLayout.setSpacing(true);
+
+        Span titleSpan = new Span("Başlık: " + request.getTitle());
+        titleSpan.getStyle().set("font-weight", "bold");
+
+        TextArea descArea = new TextArea("Açıklama");
+        descArea.setValue(request.getDescription() != null ? request.getDescription() : "Açıklama bulunmuyor.");
+        descArea.setReadOnly(true);
+        descArea.setWidthFull();
+        descArea.setMinHeight("150px");
+
+        detayLayout.add(titleSpan, descArea);
+
+        try {
+            WorkflowEntity workflow = workflowRepository.findByRequest_RequestId(request.getRequestId()).orElse(null);
+            if (workflow != null && workflow.getActualEffortHours() != null) {
+                Span effortBadge = new Span("⏱️ Harcanan Efor: " + workflow.getActualEffortHours() + " Saat");
+                effortBadge.getElement().getThemeList().add("badge success primary");
+                effortBadge.getStyle().set("margin-top", "10px").set("font-size", "14px");
+                detayLayout.add(effortBadge);
+            }
+        } catch (Exception ignored) {}
+
+        com.example.base.ui.Chat.InternalChatPanel chatPanel = 
+            new com.example.base.ui.Chat.InternalChatPanel(internalCommentService, teamChatBroadcaster, request.getRequestId(), currentUser);
+        chatPanel.setVisible(false);
+
+        tabs.addSelectedChangeListener(event -> {
+            detayLayout.setVisible(event.getSelectedTab().equals(detayTab));
+            chatPanel.setVisible(event.getSelectedTab().equals(yazismaTab));
+        });
+
+        detailDialog.add(tabs, detayLayout, chatPanel);
+
+        Button closeBtn = new Button("Kapat", e -> detailDialog.close());
+        closeBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        detailDialog.getFooter().add(closeBtn);
+
+        detailDialog.open();
     }
 
     private Badge createSlaBadge(RequestEntity request) {
+        Badge badge;
         if ("KAPATILDI".equals(request.getStatus())) {
-            Badge closedBadge = new Badge(getTranslation("requests.sla.completed"));
-            closedBadge.addThemeVariants(BadgeVariant.CONTRAST); 
-            return closedBadge;
-        }
-
-        if(request.getCreatedAt() == null) return new Badge("-");
-
-        long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
-
-        long slaLimitHours = settingsService.getSlaLimitHours();
-        long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
-
-        if (hoursElapsed >= slaLimitHours) {
-            Badge ihlalBadge = new Badge(getTranslation("requests.sla.violated") + " (" + hoursElapsed + "s)");
-            ihlalBadge.addThemeVariants(BadgeVariant.ERROR);
-            ihlalBadge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
-            return ihlalBadge;
-        } else if (hoursElapsed >= warningLimitHours) {
-            Badge uyariBadge = new Badge(getTranslation("requests.sla.warning") + " (" + hoursElapsed + "s)");
-            uyariBadge.addThemeVariants(BadgeVariant.WARNING);
-            uyariBadge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
-            return uyariBadge;
+            badge = new Badge("TAMAM");
+            badge.addThemeVariants(BadgeVariant.CONTRAST); 
+        } else if (request.getCreatedAt() == null) {
+            badge = new Badge("-");
         } else {
-            Badge normalBadge = new Badge(getTranslation("requests.sla.normal") + " (" + hoursElapsed + "s)");
-            normalBadge.addThemeVariants(BadgeVariant.SUCCESS);
-            return normalBadge;
+            long hoursElapsed = ChronoUnit.HOURS.between(request.getCreatedAt(), LocalDateTime.now());
+            long slaLimitHours = settingsService.getSlaLimitHours();
+            long warningLimitHours = (long) (slaLimitHours * settingsService.getSlaWarningPercent());
+
+            if (hoursElapsed >= slaLimitHours) {
+                badge = new Badge("İHLAL");
+                badge.addThemeVariants(BadgeVariant.ERROR);
+                badge.getElement().setProperty("title", getTranslation("requests.sla.violatedTitle"));
+            } else if (hoursElapsed >= warningLimitHours) {
+                badge = new Badge("UYARI");
+                badge.addThemeVariants(BadgeVariant.WARNING);
+                badge.getElement().setProperty("title", getTranslation("requests.sla.warningTitle"));
+            } else {
+                badge = new Badge("NORMAL");
+                badge.addThemeVariants(BadgeVariant.SUCCESS);
+            }
         }
+        
+        badge.getStyle().set("min-width", "85px").set("justify-content", "center").set("white-space", "nowrap");
+        return badge;
     }
 
     private Component createRatingColumn(RequestEntity request) {
         if (request.getSatisfactionScore() != null) {
-            Span pointBadge = new Span("⭐ " + request.getSatisfactionScore() + "/5");
+            Span pointBadge = new Span("⭐ " + request.getSatisfactionScore());
             pointBadge.getElement().getThemeList().add("badge success");
             pointBadge.getStyle().set("font-weight", "bold");
             
@@ -309,7 +520,7 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
             }
             return pointBadge;
         } else if ("KAPATILDI".equals(request.getStatus())) {
-            return new Span(getTranslation("po.eval.unrated"));
+            return new Span("-");
         }
         return new Span("-");
     }
@@ -423,28 +634,36 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
     }
 
     private Component createDateRangeFilterHeader(RequestFilter requestFilter) {
-        VerticalLayout dateLayout = new VerticalLayout();
-        dateLayout.setPadding(false);
-        dateLayout.setSpacing(false);
-
         DatePicker startPicker = new DatePicker();
-        startPicker.setPlaceholder(getTranslation("requests.filter.startDate"));
+        startPicker.setPlaceholder("İlk");
         startPicker.setClearButtonVisible(true);
-        startPicker.setWidth("110px");
-        startPicker.getStyle().set("margin-bottom", "4px");
+        startPicker.setWidth("85px");
+        startPicker.addThemeVariants(DatePickerVariant.LUMO_SMALL);
+        startPicker.setValue(LocalDate.now().minusWeeks(1));
+        requestFilter.setStartDate(LocalDate.now().minusWeeks(1).atStartOfDay());
+
+        DatePicker endPicker = new DatePicker();
+        endPicker.setPlaceholder("Son");
+        endPicker.setClearButtonVisible(true);
+        endPicker.setWidth("85px");
+        endPicker.addThemeVariants(DatePickerVariant.LUMO_SMALL);
+        endPicker.setValue(LocalDate.now());
+        requestFilter.setEndDate(LocalDate.now().atTime(23, 59, 59));
+
         startPicker.addValueChangeListener(e -> {
+            endPicker.setMin(e.getValue());
             requestFilter.setStartDate(e.getValue() != null ? e.getValue().atStartOfDay() : null);
         });
 
-        DatePicker endPicker = new DatePicker();
-        endPicker.setPlaceholder(getTranslation("requests.filter.endDate"));
-        endPicker.setClearButtonVisible(true);
-        endPicker.setWidth("110px");
         endPicker.addValueChangeListener(e -> {
+            startPicker.setMax(e.getValue());
             requestFilter.setEndDate(e.getValue() != null ? e.getValue().atTime(23, 59, 59) : null);
         });
 
-        dateLayout.add(startPicker, endPicker);
+        HorizontalLayout dateLayout = new HorizontalLayout(startPicker, endPicker);
+        dateLayout.setPadding(false);
+        dateLayout.setSpacing(false);
+        dateLayout.getStyle().set("gap", "2px");
         return dateLayout;
     }
 
@@ -458,8 +677,7 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
                 selectedRequest.setStatus("KAPATILDI"); 
                 requestRepository.save(selectedRequest);
 
-                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                String poEmail = (auth != null) ? auth.getName() : "";
+                String poEmail = (currentUser != null) ? currentUser.getEmail() : "";
                 
                 systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() + " olan talebi kapattı. Gerekçe: " + closeReason.getValue());
 
@@ -474,7 +692,9 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
             }
         });
         confirmCloseBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelBtn = new Button(getTranslation("requests.btn.cancel"), e -> closeDialog.close());
+        Button cancelBtn = new Button(getTranslation("requests.btn.cancel"), e -> {
+            closeDialog.close();
+        });
 
         closeDialog.getFooter().add(confirmCloseBtn, cancelBtn);
         closeDialog.add(closeReason);
@@ -506,6 +726,16 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
         );
     }
 
+    private int parseComboValue(String value) {
+        if (value == null || value.isEmpty()) return 5;
+        try {
+            String numStr = value.split(" ")[0];
+            return Integer.parseInt(numStr);
+        } catch (Exception e) {
+            return 5;
+        }
+    }
+
     private void evaluateRequest() {
         if (selectedRequest != null) {
             boolean secOverride = securityOverride.getValue();
@@ -517,19 +747,18 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
             }
 
             try {
-                int urgencyPuan = urgency.getValue() != null ? Character.getNumericValue(urgency.getValue().charAt(0)) : 5;
-                int impactPuan = impact.getValue() != null ? Character.getNumericValue(impact.getValue().charAt(0)) : 5;
-                int effortPuan = effort.getValue() != null ? Character.getNumericValue(effort.getValue().charAt(0)) : 1;
+                int urgencyPuan = parseComboValue(urgency.getValue());
+                int impactPuan = parseComboValue(impact.getValue());
+                int effortPuan = parseComboValue(effort.getValue());
 
                 requestService.prioritizeRequest(selectedRequest.getRequestId(), urgencyPuan, impactPuan, effortPuan, secOverride);
 
-                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                String poEmail = (auth != null) ? auth.getName() : "";
+                String poEmail = (currentUser != null) ? currentUser.getEmail() : "";
                 
                 String overrideText = secOverride ? " [KRİTİK GÜVENLİK/KESİNTİ]" : "";
-                systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() + 
-                                     " olan talebi önceliklendirdi." + overrideText + " (Aciliyet: " + urgencyPuan + 
-                                     ", Etki: " + impactPuan + ", Efor: " + effortPuan + ")");
+                systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() +  
+                                   " olan talebi önceliklendirdi." + overrideText + " (Aciliyet: " + urgencyPuan + 
+                                   ", Etki: " + impactPuan + ", Efor: " + effortPuan + ")");
 
                 if (selectedRequest.getCustomer() != null) {
                     notificationService.notifyUser(selectedRequest.getCustomer().getUserId(), getTranslation("po.eval.notif.prioritizedTitle"), "'" + selectedRequest.getTitle() + "' " + getTranslation("po.eval.notif.prioritizedDesc"));
@@ -555,25 +784,30 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
 
     private void convertToWorkflow() {
         if (selectedRequest != null) {
-            
             if ("İş Akışına Dönüştü".equals(selectedRequest.getStatus())) {
-                Notification.show(getTranslation("po.eval.error.alreadyTransferred"), 4000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_WARNING);
+                Notification.show(getTranslation("po.eval.error.alreadyTransferred"), 4000, Notification.Position.TOP_CENTER).addThemeVariants(NotificationVariant.LUMO_WARNING);
                 return;
             }
             
-            if (!"ONAYLANDI".equals(selectedRequest.getStatus())) {
-                Notification.show(getTranslation("po.eval.error.lowScore"), 5000, Notification.Position.TOP_CENTER)
-                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                return;
-            }
-
             try {
+                int urgencyPuan = urgency.getValue() != null ? parseComboValue(urgency.getValue()) : 5;
+                int impactPuan = impact.getValue() != null ? parseComboValue(impact.getValue()) : 5;
+                int effortPuan = effort.getValue() != null ? parseComboValue(effort.getValue()) : 1;
+                boolean secOverride = securityOverride.getValue();
+
+                int score = requestService.calculateScore(urgencyPuan, impactPuan, effortPuan, secOverride);
+                int threshold = settingsService.getPoAutoApprovalThreshold();
+
+                if (score < threshold && !secOverride) {
+                    Notification.show("HATA: Bu talebin puanı (" + score + "), Admin tarafından belirlenen eşik değerinin (" + threshold + ") altında! Yazılım ekibine aktarılamaz.", 5000, Notification.Position.MIDDLE)
+                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
+                    return; 
+                }
+                
+                requestService.prioritizeRequest(selectedRequest.getRequestId(), urgencyPuan, impactPuan, effortPuan, secOverride);
                 requestService.goreveDonustur(selectedRequest);
 
-                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-                String poEmail = (auth != null) ? auth.getName() : "";
-                
+                String poEmail = (currentUser != null) ? currentUser.getEmail() : "";
                 systemLogService.log("PO (" + poEmail + "), ID: " + selectedRequest.getRequestId() + " olan talebi yazılım ekibine/göreve dönüştürdü.");
 
                 if (selectedRequest.getCustomer() != null) {
@@ -597,7 +831,15 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
     }
 
     private void refreshGrid() {
-        dataView = grid.setItems(requestRepository.findAll());
+        List<RequestEntity> requests = requestService.getAllRequestsForGrid();
+        
+        requests.sort((r1, r2) -> {
+            int score1 = (r1.getPrioritization() != null) ? r1.getPrioritization().getPriorityScore() : -1;
+            int score2 = (r2.getPrioritization() != null) ? r2.getPrioritization().getPriorityScore() : -1;
+            return Integer.compare(score2, score1);
+        });
+
+        dataView = grid.setItems(requests);
         requestFilter.setDataView(dataView); 
     }
 
@@ -605,8 +847,16 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
         private GridListDataView<RequestEntity> dataView;
         private String assignee = "";
         private String searchTerm = "";
-        private LocalDateTime startDate;
-        private LocalDateTime endDate;
+        private LocalDateTime startDate = LocalDate.now().minusWeeks(1).atStartOfDay();
+        private LocalDateTime endDate = LocalDate.now().atTime(23, 59, 59);
+        private Integer assignedUserIdFilter = null;
+        
+        private boolean isGodPanel = false;
+
+        public void setGodPanel(boolean isGodPanel) {
+            this.isGodPanel = isGodPanel;
+            if (dataView != null) dataView.refreshAll();
+        }
 
         public void setDataView(GridListDataView<RequestEntity> dataView) {
             this.dataView = dataView;
@@ -633,10 +883,15 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
             if (dataView != null) dataView.refreshAll();
         }
 
+        public void setAssignedUserIdFilter(Integer assignedUserIdFilter) {
+            this.assignedUserIdFilter = assignedUserIdFilter;
+            if (dataView != null) dataView.refreshAll();
+        }
+
         public boolean test(RequestEntity request) {
             String mappedAssignee = request.getStatus();
-            if ("NEW".equals(request.getStatus())) mappedAssignee = "Destek Ekibi";
-            else if ("INCELEMEDE".equals(request.getStatus())) mappedAssignee = "Ürün Yönetimi";
+            if ("NEW".equals(request.getStatus()) || "DESTEK_KONTROL".equals(request.getStatus())) mappedAssignee = "Destek Ekibi";
+            else if ("INCELEMEDE".equals(request.getStatus()) || "PO_KONTROL".equals(request.getStatus())) mappedAssignee = "Ürün Yönetimi";
             else if ("ONAYLANDI".equals(request.getStatus()) || "İş Akışına Dönüştü".equals(request.getStatus())) mappedAssignee = "Yazılım Ekibi";
 
             boolean matchesAssignee = matches(mappedAssignee, assignee);
@@ -654,7 +909,17 @@ public class TalepDegerlendirme extends VerticalLayout implements HasDynamicTitl
                 if (startDate != null && request.getCreatedAt().isBefore(startDate)) matchesDate = false;
                 if (endDate != null && request.getCreatedAt().isAfter(endDate)) matchesDate = false;
             }
-            return matchesAssignee && matchesSearch && matchesDate;
+
+            boolean matchesAssignedUser = true;
+            if (assignedUserIdFilter != null) {
+                boolean isAssignedToMe = request.getAssignedUser() != null && request.getAssignedUser().getUserId().equals(assignedUserIdFilter);
+                boolean isAssignedToPO = isGodPanel && request.getAssignedUser() != null && "PO".equals(request.getAssignedUser().getRole().name());
+                boolean isInReviewPool = request.getAssignedUser() == null && ("INCELEMEDE".equals(request.getStatus()) || "PO_KONTROL".equals(request.getStatus()));
+                
+                matchesAssignedUser = isAssignedToMe || isAssignedToPO || isInReviewPool;
+            }
+
+            return matchesAssignee && matchesSearch && matchesDate && matchesAssignedUser;
         }
 
         private boolean matches(String value, String searchTerm) {

@@ -1,0 +1,90 @@
+/* --- TALEPLERİM VIEW STYLES --- */
+
+.taleplerim-layout {
+    background-color: var(--lumo-contrast-5pct);
+    overflow: hidden;
+}
+
+.taleplerim-main-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.taleplerim-grid {
+    flex-grow: 1;
+    background-color: var(--lumo-base-color);
+    border-radius: 12px;
+}
+
+/* --- HEADER STYLES --- */
+
+.taleplerim-header {
+    margin-bottom: 16px;
+    flex-shrink: 0;
+}
+
+.taleplerim-heading {
+    margin: 0 0 2px 0;
+    color: var(--lumo-header-text-color);
+    font-size: 22px;
+}
+
+.taleplerim-subtitle {
+    margin: 0;
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-s);
+}
+
+/* --- FILTER STYLES --- */
+
+.taleplerim-date-layout {
+    gap: 4px;
+}
+
+/* --- DIALOG & COMPONENT STYLES --- */
+
+.taleplerim-detail-title {
+    font-weight: bold;
+}
+
+.taleplerim-effort-badge {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.taleplerim-point-badge {
+    font-weight: bold;
+}
+
+.taleplerim-screenshot-image {
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.taleplerim-chat-container {
+    position: relative;
+    display: inline-block;
+}
+
+.taleplerim-chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.taleplerim-status-badge {
+    cursor: help;
+}

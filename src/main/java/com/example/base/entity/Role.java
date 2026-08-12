@@ -5,5 +5,6 @@ public enum Role {
     PO,
     HELPDESK,
     ADMIN,
-    PROGRAMMER
+    PROGRAMMER,
+    GODPANEL
 }

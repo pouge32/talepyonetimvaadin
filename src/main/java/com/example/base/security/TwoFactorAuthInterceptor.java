@@ -1,4 +1,4 @@
-package com.example.base.security;
+/*package com.example.base.security;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,7 +29,8 @@ public class TwoFactorAuthInterceptor implements VaadinServiceInitListener {
                             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || 
                             a.getAuthority().equals("ROLE_PO") || 
                             a.getAuthority().equals("ROLE_HELPDESK") || 
-                            a.getAuthority().equals("ROLE_PROGRAMMER"));
+                            a.getAuthority().equals("ROLE_PROGRAMMER") || 
+                            a.getAuthority().equals("ROLE_GODPANEL"));
 
                     Object passed = VaadinSession.getCurrent().getAttribute("2FA_PASSED");
 
@@ -40,4 +41,4 @@ public class TwoFactorAuthInterceptor implements VaadinServiceInitListener {
             });
         });
     }
-}
+}*/

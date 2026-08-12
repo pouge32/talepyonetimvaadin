@@ -1,5 +1,6 @@
 package com.example.base.ui.AdminScreen;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -17,6 +18,8 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datepicker.DatePicker;
+import com.vaadin.flow.component.datepicker.DatePickerVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.Div;
@@ -28,6 +31,7 @@ import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.textfield.TextFieldVariant;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
@@ -35,7 +39,8 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "admin/loglar", layout = MainLayout.class)
-@RolesAllowed("ADMIN")
+@RolesAllowed({"ADMIN", "GODPANEL"})
+@CssImport("./styles/admin/admin-logs.css")
 public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
 
     private final SystemLogRepository systemLogRepository;
@@ -48,8 +53,8 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
     
     private String searchTerm = "";
     private String userEmailFilter = "";
-    private LocalDateTime startDateFilter = null;
-    private LocalDateTime endDateFilter = null;
+    private LocalDateTime startDateFilter = LocalDate.now().minusDays(1).atStartOfDay();
+    private LocalDateTime endDateFilter = LocalDate.now().atTime(23, 59, 59);
 
     private final Button prevButton = new Button();
     private final Button nextButton = new Button();
@@ -62,33 +67,25 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         setSizeFull();
         setPadding(true);
         setSpacing(false);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("admin-logs-layout");
 
         Div mainContainer = new Div();
         mainContainer.setWidthFull();
-        mainContainer.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("box-shadow", "0 4px 20px rgba(0, 0, 0, 0.05)")
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "30px")
-                .set("max-width", "1400px")
-                .set("margin", "0 auto")
-                .set("height", "calc(100vh - 100px)")
-                .set("display", "flex")
-                .set("flex-direction", "column");
+        mainContainer.addClassName("admin-logs-main-container");
 
         H2 title = new H2(getTranslation("admin.logs.headerTitle"));
-        title.getStyle().set("margin-top", "0");
+        title.addClassName("admin-logs-title");
+        
         Paragraph subtitle = new Paragraph(getTranslation("admin.logs.headerSubtitle"));
-        subtitle.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        subtitle.addClassName("admin-logs-subtitle");
 
         TextField searchField = new TextField(getTranslation("admin.logs.searchLabel"));
         searchField.setPlaceholder(getTranslation("admin.logs.searchPlaceholder"));
         searchField.setPrefixComponent(VaadinIcon.SEARCH.create());
         searchField.setValueChangeMode(ValueChangeMode.LAZY);
         searchField.setClearButtonVisible(true);
-        searchField.setWidth("250px");
+        searchField.addThemeVariants(TextFieldVariant.LUMO_SMALL);
+        searchField.setWidth("180px");
         searchField.addValueChangeListener(e -> {
             this.searchTerm = e.getValue();
             this.currentPage = 0; 
@@ -100,7 +97,7 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         userFilterCombo.setItemLabelGenerator(user -> user.getNameSurname() + " (" + user.getEmail() + ")");
         userFilterCombo.setPlaceholder(getTranslation("admin.logs.userFilterPlaceholder"));
         userFilterCombo.setClearButtonVisible(true);
-        userFilterCombo.setWidth("280px");
+        userFilterCombo.setWidth("200px");
         userFilterCombo.addValueChangeListener(e -> {
             this.userEmailFilter = e.getValue() != null ? e.getValue().getEmail() : "";
             this.currentPage = 0;
@@ -109,6 +106,9 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
 
         DatePicker startDatePicker = new DatePicker(getTranslation("admin.logs.startDateLabel"));
         startDatePicker.setClearButtonVisible(true);
+        startDatePicker.addThemeVariants(DatePickerVariant.LUMO_SMALL);
+        startDatePicker.setWidth("130px");
+        startDatePicker.setValue(LocalDate.now().minusDays(1));
         startDatePicker.addValueChangeListener(e -> {
             this.startDateFilter = e.getValue() != null ? e.getValue().atStartOfDay() : null;
             this.currentPage = 0;
@@ -117,6 +117,9 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
 
         DatePicker endDatePicker = new DatePicker(getTranslation("admin.logs.endDateLabel"));
         endDatePicker.setClearButtonVisible(true);
+        endDatePicker.addThemeVariants(DatePickerVariant.LUMO_SMALL);
+        endDatePicker.setWidth("130px");
+        endDatePicker.setValue(LocalDate.now());
         endDatePicker.addValueChangeListener(e -> {
             this.endDateFilter = e.getValue() != null ? e.getValue().atTime(23, 59, 59) : null;
             this.currentPage = 0;
@@ -124,7 +127,7 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         });
 
         Button refreshButton = new Button(getTranslation("admin.logs.refreshBtn"), VaadinIcon.REFRESH.create());
-        refreshButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        refreshButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_SMALL);
         refreshButton.addClickListener(e -> {
             this.currentPage = 0;
             refreshGrid();
@@ -133,7 +136,7 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         HorizontalLayout filterLayout = new HorizontalLayout(searchField, userFilterCombo, startDatePicker, endDatePicker, refreshButton);
         filterLayout.setAlignItems(FlexComponent.Alignment.BASELINE);
         filterLayout.setWidthFull();
-        filterLayout.getStyle().set("flex-wrap", "wrap").set("margin-bottom", "16px");
+        filterLayout.addClassName("admin-logs-filter-layout");
 
         configureGrid();
         
@@ -150,13 +153,14 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
 
     private void configureGrid() {
         grid.addColumn(SystemLogEntity::getLogId).setHeader(getTranslation("admin.logs.grid.id")).setAutoWidth(true).setFlexGrow(0); 
+        
         grid.addColumn(SystemLogEntity::getAction).setHeader(getTranslation("admin.logs.grid.action")).setFlexGrow(1);
         
         grid.addColumn(log -> log.getCreatedAt() != null ? log.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss")) : "-")
             .setHeader(getTranslation("admin.logs.grid.date")).setAutoWidth(true).setFlexGrow(0);
 
         grid.setWidthFull();
-        grid.getStyle().set("flex-grow", "1");
+        grid.addClassName("admin-logs-grid");
         grid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_COMPACT);
     }
 
@@ -165,7 +169,7 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         paginationBar.setWidthFull();
         paginationBar.setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
         paginationBar.setAlignItems(FlexComponent.Alignment.CENTER);
-        paginationBar.getStyle().set("padding-top", "15px");
+        paginationBar.addClassName("admin-logs-pagination-bar");
 
         prevButton.setText(getTranslation("admin.logs.pagination.prev"));
         prevButton.setIcon(VaadinIcon.ANGLE_LEFT.create());
@@ -176,7 +180,7 @@ public class SystemLogsView extends VerticalLayout implements HasDynamicTitle {
         nextButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         nextButton.setIconAfterText(true);
 
-        pageInfo.getStyle().set("font-weight", "bold").set("margin", "0 20px");
+        pageInfo.addClassName("admin-logs-page-info");
 
         prevButton.addClickListener(e -> {
             if (currentPage > 0) {

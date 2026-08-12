@@ -12,7 +12,11 @@ import com.example.base.entity.RequestEntity;
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
+import com.example.base.ui.AdminScreen.AdminUserManagmentView;
+import com.example.base.ui.CustomerScreen.Taleplerim.TaleplerimView;
+import com.example.base.ui.PoScreen.TalepDegerlendirme;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.badge.Badge;
 import com.vaadin.flow.component.badge.BadgeVariant;
 import com.vaadin.flow.component.grid.Grid;
@@ -127,7 +131,7 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
 
     private void configureGrids() {
         requestGrid.addColumn(RequestEntity::getRequestId).setHeader(getTranslation("home.grid.id")).setAutoWidth(true).setFlexGrow(0);
-        requestGrid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("home.grid.title")).setFlexGrow(1);
+        requestGrid.addColumn(RequestEntity::getTitle).setHeader(getTranslation("home.grid.title")).setFlexGrow(2);
         
         requestGrid.addColumn(req -> {
             try {
@@ -135,17 +139,43 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
             } catch (Exception e) {
                 return getTranslation("home.unknown");
             }
-        }).setHeader(getTranslation("home.grid.customer")).setAutoWidth(true);
+        }).setHeader(getTranslation("home.grid.customer")).setFlexGrow(1).setAutoWidth(true);
         
-        requestGrid.addComponentColumn(this::createStatusBadge).setHeader(getTranslation("home.grid.status")).setAutoWidth(true).setFlexGrow(0);
-        requestGrid.addColumn(req -> req.getCreatedAt() != null ? req.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "-").setHeader(getTranslation("home.grid.date")).setAutoWidth(true);
+        requestGrid.addComponentColumn(this::createStatusBadge).setHeader(getTranslation("home.grid.status")).setWidth("130px").setFlexGrow(0);
+        requestGrid.addColumn(req -> req.getCreatedAt() != null ? req.getCreatedAt().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")) : "-").setHeader(getTranslation("home.grid.date")).setAutoWidth(true).setFlexGrow(0);
         requestGrid.setHeight("250px");
+
+        requestGrid.addItemDoubleClickListener(event -> {
+            RequestEntity req = event.getItem();
+            if (req != null) {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                boolean isCustomer = auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("CUSTOMER"));
+                
+                if (isCustomer) {
+                    UI.getCurrent().navigate(TaleplerimView.class);
+                } else {
+                    UI.getCurrent().navigate(TalepDegerlendirme.class);
+                }
+            }
+        });
 
         userGrid.addColumn(UserEntity::getUserId).setHeader(getTranslation("home.grid.id")).setAutoWidth(true).setFlexGrow(0);
         userGrid.addColumn(UserEntity::getNameSurname).setHeader(getTranslation("home.grid.nameSurname")).setFlexGrow(1);
         userGrid.addColumn(UserEntity::getEmail).setHeader(getTranslation("home.grid.email")).setFlexGrow(1);
         userGrid.addComponentColumn(this::createRoleBadge).setHeader(getTranslation("home.grid.role")).setAutoWidth(true).setFlexGrow(0);
         userGrid.setHeight("200px");
+
+        userGrid.addItemDoubleClickListener(event -> {
+            UserEntity user = event.getItem();
+            if (user != null) {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                boolean isAdmin = auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().contains("ADMIN"));
+                
+                if (isAdmin) {
+                    UI.getCurrent().navigate(AdminUserManagmentView.class);
+                }
+            }
+        });
     }
 
     private String normalizeText(String text) {
@@ -243,6 +273,12 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
     private Badge createStatusBadge(RequestEntity request) {
         String status = request.getStatus() != null ? request.getStatus() : "";
         Badge badge = new Badge(status);
+        
+        badge.getStyle()
+             .set("min-width", "95px")
+             .set("justify-content", "center")
+             .set("white-space", "nowrap");
+
         switch (status) {
             case "NEW": badge.addThemeVariants(BadgeVariant.CONTRAST); break;
             case "INCELEMEDE": badge.addThemeVariants(BadgeVariant.WARNING); break;

@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.example.base.entity.RequestEntity;
 import com.example.base.entity.UserEntity;
@@ -38,4 +39,10 @@ public interface RequestRepository extends JpaRepository<RequestEntity, Integer>
     String titleKeyword, String descriptionKeyword);
 
     long countByAssignedUserAndStatusIn(UserEntity assignedUser, List<String> statuses);
+
+    @Query("SELECT r FROM RequestEntity r WHERE r.status = 'KAPATILDI' " +
+           "AND r.surveyCompleted = false " +
+           "AND r.surveyReminderSent = false " +
+           "AND r.updatedAt <= :twentyFourHoursAgo")
+    List<RequestEntity> findRequestsForSurveyReminder(@Param("twentyFourHoursAgo") LocalDateTime twentyFourHoursAgo);
 }

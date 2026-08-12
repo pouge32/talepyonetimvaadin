@@ -16,12 +16,13 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
-    
+    private final SettingsService settingsService;
     private final NotificationBroadcaster broadcaster; 
 
-    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, NotificationBroadcaster broadcaster) {
+    public NotificationService(NotificationRepository notificationRepository, UserRepository userRepository, SettingsService settingsService, NotificationBroadcaster broadcaster) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
+        this.settingsService = settingsService;
         this.broadcaster = broadcaster;
     }
 
@@ -37,6 +38,10 @@ public class NotificationService {
 
     @Transactional
     public void notifyUser(Integer userId, String title, String content) {
+        if (!settingsService.isNotificationsEnabled()) {
+        return; 
+    }
+        
         if (userId == null) return;
         
         UserEntity user = userRepository.findById(userId)

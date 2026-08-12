@@ -19,6 +19,11 @@ public class SettingsService {
     public static final String SLA_LIMIT_HOURS = "sla_limit_hours";
     public static final String SLA_WARNING_PERCENT = "sla_warning_percent";
 
+    public static final String MAINTENANCE_MODE = "maintenance_mode";
+    public static final String NOTIFICATIONS_ENABLED = "notifications_enabled";
+    public static final String MAX_FILE_UPLOAD_SIZE_MB = "max_file_upload_size_mb";
+    public static final String PO_AUTO_APPROVAL_THRESHOLD = "po_auto_approval_threshold";
+
     private final SystemSettingRepository settingRepository;
     private final CategoryRepository categoryRepository;
 
@@ -56,6 +61,40 @@ public class SettingsService {
         upsert(SLA_LIMIT_HOURS, String.valueOf(limitHours), "SLA ihlal süresi (saat)");
         upsert(SLA_WARNING_PERCENT, String.valueOf(warningPercent), "SLA uyarı eşiği (0-1 arası oran)");
     }
+
+
+    public boolean isMaintenanceMode() {
+        return settingRepository.findBySettingKey(MAINTENANCE_MODE)
+                .map(s -> Boolean.parseBoolean(s.getSettingValue()))
+                .orElse(false);
+    }
+
+    public boolean isNotificationsEnabled() {
+        return settingRepository.findBySettingKey(NOTIFICATIONS_ENABLED)
+                .map(s -> Boolean.parseBoolean(s.getSettingValue()))
+                .orElse(true);
+    }
+
+    public int getMaxFileUploadSize() {
+        return settingRepository.findBySettingKey(MAX_FILE_UPLOAD_SIZE_MB)
+                .map(s -> Integer.parseInt(s.getSettingValue()))
+                .orElse(5);
+    }
+
+    public int getPoAutoApprovalThreshold() {
+        return settingRepository.findBySettingKey(PO_AUTO_APPROVAL_THRESHOLD)
+                .map(s -> Integer.parseInt(s.getSettingValue()))
+                .orElse(10);
+    }
+
+    @Transactional
+    public void updateGeneralSettings(boolean maintenanceMode, boolean notificationsEnabled, int maxFileSize, int poThreshold) {
+        upsert(MAINTENANCE_MODE, String.valueOf(maintenanceMode), "Sistem bakım modu (true/false)");
+        upsert(NOTIFICATIONS_ENABLED, String.valueOf(notificationsEnabled), "Sistem içi bildirimler ve mailler aktif mi (true/false)");
+        upsert(MAX_FILE_UPLOAD_SIZE_MB, String.valueOf(maxFileSize), "Maksimum dosya yükleme sınırı (MB)");
+        upsert(PO_AUTO_APPROVAL_THRESHOLD, String.valueOf(poThreshold), "PO onayında otomatik işe dönüşme eşik puanı");
+    }
+
 
     private void upsert(String key, String value, String description) {
         SystemSettingEntity setting = settingRepository.findBySettingKey(key)

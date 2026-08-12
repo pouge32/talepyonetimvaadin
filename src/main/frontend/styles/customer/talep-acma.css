@@ -1,0 +1,227 @@
+/* --- TALEP AÇMA VIEW STYLES --- */
+
+.talep-acma-layout {
+    background-color: var(--lumo-contrast-5pct);
+    overflow: hidden;
+}
+
+.talep-acma-scroll-wrapper {
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.talep-acma-grid-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+/* --- HEADER STYLES --- */
+
+.talep-acma-header {
+    margin-bottom: 15px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.talep-acma-heading {
+    margin: 0 0 2px 0;
+    color: var(--lumo-header-text-color);
+    font-size: 22px;
+}
+
+.talep-acma-subtitle {
+    margin: 0;
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-s);
+}
+
+.talep-acma-faq-button {
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* --- CARD & BADGE STYLES --- */
+
+.talep-acma-card {
+    background-color: var(--lumo-base-color);
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--lumo-contrast-10pct);
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+.talep-acma-icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.talep-acma-card-title {
+    margin: 0;
+    font-size: 16px;
+}
+
+.talep-acma-required-note {
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-xs);
+}
+
+/* --- FORM & INPUT STYLES --- */
+
+.talep-acma-char-counter {
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-xs);
+    display: block;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.talep-acma-form-layout {
+    margin-top: 12px;
+}
+
+.talep-acma-submit-btn {
+    height: 40px;
+    font-weight: 600;
+}
+
+.talep-acma-clear-btn {
+    height: 40px;
+}
+
+.talep-acma-actions {
+    margin-top: 16px;
+}
+
+/* --- SCREENSHOT UPLOAD STYLES --- */
+
+.talep-acma-screenshot-wrapper {
+    margin-top: 16px;
+}
+
+.talep-acma-camera-icon {
+    color: var(--lumo-secondary-text-color);
+}
+
+.talep-acma-screenshot-label {
+    font-weight: 500;
+    font-size: var(--lumo-font-size-s);
+}
+
+.talep-acma-upload {
+    margin-top: 8px;
+    background: var(--lumo-contrast-5pct);
+    border: 1px dashed var(--lumo-contrast-20pct);
+    border-radius: 10px;
+    padding: 4px;
+    --lumo-primary-color: #333333;
+    --lumo-primary-text-color: #333333;
+    color: #333333;
+}
+
+.talep-acma-drop-label {
+    color: #333333 !important;
+    -webkit-text-fill-color: #333333;
+    background: transparent;
+    font-size: var(--lumo-font-size-xs);
+    user-select: none;
+}
+
+.talep-acma-previews-layout {
+    margin-top: 10px;
+}
+
+.talep-acma-preview-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--lumo-base-color);
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.talep-acma-preview-name {
+    font-size: var(--lumo-font-size-xs);
+    font-weight: 500;
+}
+
+/* --- SUGGESTION BOX STYLES --- */
+
+.talep-acma-suggestion-box {
+    background-color: var(--lumo-primary-color-10pct);
+    border: 1px solid var(--lumo-primary-color-50pct);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.3s ease-in-out;
+}
+
+.talep-acma-suggestion-header {
+    font-weight: bold;
+    color: var(--lumo-primary-text-color);
+}
+
+.talep-acma-suggestion-text {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.talep-acma-suggestion-answer {
+    margin: 0;
+    font-size: 13px;
+    color: var(--lumo-secondary-text-color);
+}
+
+/* --- TIPS & LEGEND STYLES --- */
+
+.talep-acma-tips-layout {
+    margin-top: 12px;
+}
+
+.talep-acma-tip-dot {
+    color: var(--lumo-success-color);
+    margin-top: 3px;
+    flex-shrink: 0;
+}
+
+.talep-acma-tip-text {
+    color: var(--lumo-body-text-color);
+    font-size: var(--lumo-font-size-xs);
+}
+
+.talep-acma-legend-layout {
+    margin-top: 12px;
+}
+
+.talep-acma-legend-row {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--lumo-contrast-5pct);
+}
+
+.talep-acma-legend-name {
+    font-weight: 600;
+    display: block;
+    font-size: var(--lumo-font-size-xs);
+}
+
+.talep-acma-legend-hint {
+    color: var(--lumo-secondary-text-color);
+    font-size: 11px;
+    display: block;
+    margin-top: 1px;
+}

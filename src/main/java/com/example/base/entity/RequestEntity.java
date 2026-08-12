@@ -69,6 +69,15 @@ public class RequestEntity {
     @Column(name = "satisfaction_comment", length = 500)
     private String satisfactionComment;
 
+    @Column(name = "survey_completed")
+    private Boolean surveyCompleted = false;
+
+    @Column(name = "survey_reminder_sent")
+    private Boolean surveyReminderSent = false;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     public RequestEntity() {
     }
 
@@ -124,4 +133,13 @@ public class RequestEntity {
 
     public String getSatisfactionComment() { return satisfactionComment; }
     public void setSatisfactionComment(String satisfactionComment) { this.satisfactionComment = satisfactionComment; }
+
+    public Boolean getSurveyCompleted() { return surveyCompleted; }
+    public void setSurveyCompleted(Boolean surveyCompleted) { this.surveyCompleted = surveyCompleted; }
+
+    public Boolean getSurveyReminderSent() { return surveyReminderSent; }
+    public void setSurveyReminderSent(Boolean surveyReminderSent) { this.surveyReminderSent = surveyReminderSent; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

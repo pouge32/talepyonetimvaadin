@@ -64,6 +64,12 @@ public class UserEntity {
     @Column(name = "otp_expiry")
     private LocalDateTime otpExpiry;
 
+    @Column(name = "deletion_requested")
+    private Boolean deletionRequested = false;
+
+    @Column(name = "deletion_request_date")
+    private LocalDateTime deletionRequestDate;
+
     public UserEntity() {
     }
 
@@ -156,4 +162,10 @@ public class UserEntity {
 
     public LocalDateTime getOtpExpiry() { return otpExpiry; }
     public void setOtpExpiry(LocalDateTime otpExpiry) { this.otpExpiry = otpExpiry; }
+
+    public Boolean getDeletionRequested() { return deletionRequested; }
+    public void setDeletionRequested(Boolean deletionRequested) { this.deletionRequested = deletionRequested; }
+
+    public LocalDateTime getDeletionRequestDate() { return deletionRequestDate; }
+    public void setDeletionRequestDate(LocalDateTime deletionRequestDate) { this.deletionRequestDate = deletionRequestDate; }
 }

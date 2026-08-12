@@ -1,4 +1,31 @@
+import { injectGlobalCss } from 'Frontend/generated/jar-resources/theme-util.js';
+
+import { css, unsafeCSS, registerStyles } from '@vaadin/vaadin-themable-mixin';
+import $cssFromFile_0 from 'Frontend/styles/admin/admin-managment.css?inline';
+import $cssFromFile_1 from 'Frontend/styles/admin/admin-settings.css?inline';
+import $cssFromFile_2 from 'Frontend/styles/admin/admin-user-managment.css?inline';
+import $cssFromFile_3 from 'Frontend/styles/admin/admin-logs.css?inline';
+import $cssFromFile_4 from 'Frontend/styles/chat/genel-chat.css?inline';
+import $cssFromFile_5 from 'Frontend/styles/chat/internal-chat-panel.css?inline';
+import $cssFromFile_6 from 'Frontend/styles/chat/talep-chat.css?inline';
+import $cssFromFile_7 from 'Frontend/styles/customer/faq-view.css?inline';
+import $cssFromFile_8 from 'Frontend/styles/customer/talep-acma.css?inline';
+import $cssFromFile_9 from 'Frontend/styles/customer/taleplerim.css?inline';
 import '@vaadin/vertical-layout/src/vaadin-vertical-layout.js';
+import '@vaadin/horizontal-layout/src/vaadin-horizontal-layout.js';
+import '@vaadin/grid/src/vaadin-grid.js';
+import '@vaadin/grid/src/vaadin-grid-column.js';
+import '@vaadin/grid/src/vaadin-grid-sorter.js';
+import '@vaadin/checkbox/src/vaadin-checkbox.js';
+import 'Frontend/generated/jar-resources/flow-component-renderer.js';
+import 'Frontend/generated/jar-resources/flow-component-directive.js';
+import 'lit';
+import 'Frontend/generated/jar-resources/gridConnector.ts';
+import '@vaadin/component-base/src/debounce.js';
+import '@vaadin/component-base/src/async.js';
+import '@vaadin/grid/src/vaadin-grid-active-item-mixin.js';
+import 'Frontend/generated/jar-resources/vaadin-grid-flow-selection-column.js';
+import '@vaadin/tooltip/src/vaadin-tooltip.js';
 import '@vaadin/app-layout/src/vaadin-app-layout.js';
 import '@vaadin/field-highlighter/src/vaadin-field-highlighter.js';
 import '@vaadin/common-frontend/ConnectionIndicator.js';
@@ -12,20 +39,13 @@ import '@vaadin/avatar-group/src/vaadin-avatar-group.js';
 import '@vaadin/badge/src/vaadin-badge.js';
 import '@vaadin/breadcrumbs/src/vaadin-breadcrumbs-item.js';
 import '@vaadin/card/src/vaadin-card.js';
-import '@vaadin/checkbox/src/vaadin-checkbox.js';
 import '@vaadin/checkbox-group/src/vaadin-checkbox-group.js';
 import '@vaadin/combo-box/src/vaadin-combo-box.js';
-import 'Frontend/generated/jar-resources/flow-component-renderer.js';
-import 'Frontend/generated/jar-resources/flow-component-directive.js';
-import 'lit';
 import 'Frontend/generated/jar-resources/comboBoxConnector.js';
-import '@vaadin/component-base/src/debounce.js';
-import '@vaadin/component-base/src/async.js';
 import '@vaadin/combo-box/src/vaadin-combo-box-placeholder.js';
 import '@vaadin/multi-select-combo-box/src/vaadin-multi-select-combo-box.js';
 import '@vaadin/confirm-dialog/src/vaadin-confirm-dialog.js';
 import '@vaadin/context-menu/src/vaadin-context-menu.js';
-import '@vaadin/tooltip/src/vaadin-tooltip.js';
 import 'Frontend/generated/jar-resources/contextMenuConnector.js';
 import 'Frontend/generated/jar-resources/contextMenuTargetConnector.js';
 import '@vaadin/component-base/src/gestures.js';
@@ -45,12 +65,6 @@ import '@vaadin/form-layout/src/vaadin-form-layout.js';
 import '@vaadin/form-layout/src/vaadin-form-item.js';
 import '@vaadin/form-layout/src/vaadin-form-row.js';
 import '@vaadin/grid/src/vaadin-grid-column-group.js';
-import '@vaadin/grid/src/vaadin-grid.js';
-import '@vaadin/grid/src/vaadin-grid-column.js';
-import '@vaadin/grid/src/vaadin-grid-sorter.js';
-import 'Frontend/generated/jar-resources/gridConnector.ts';
-import '@vaadin/grid/src/vaadin-grid-active-item-mixin.js';
-import 'Frontend/generated/jar-resources/vaadin-grid-flow-selection-column.js';
 import '@vaadin/icon/src/vaadin-icon.js';
 import '@vaadin/icons/vaadin-iconset.js';
 import '@vaadin/list-box/src/vaadin-list-box.js';
@@ -65,7 +79,6 @@ import '@vaadin/message-input/src/vaadin-message-input.js';
 import 'Frontend/generated/jar-resources/messageListConnector.js';
 import '@vaadin/message-list/src/vaadin-message-list.js';
 import '@vaadin/notification/src/vaadin-notification.js';
-import '@vaadin/horizontal-layout/src/vaadin-horizontal-layout.js';
 import '@vaadin/scroller/src/vaadin-scroller.js';
 import '@vaadin/popover/src/vaadin-popover.js';
 import 'Frontend/generated/jar-resources/vaadin-popover/popover.ts';
@@ -109,6 +122,26 @@ import '@vaadin/virtual-list/src/vaadin-virtual-list.js';
 import 'Frontend/generated/jar-resources/virtualListConnector.js';
 import '@vaadin/vaadin-lumo-styles/vaadin-iconset.js';
 import 'Frontend/generated/jar-resources/copilot-version.js';
+
+injectGlobalCss($cssFromFile_0.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_1.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_2.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_3.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_4.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_5.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_6.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_7.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_8.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_9.toString(), 'CSSImport end', document);
 const loadOnDemand = (key) => { return Promise.resolve(0); }
 window.Vaadin = window.Vaadin || {};
 window.Vaadin.Flow = window.Vaadin.Flow || {};

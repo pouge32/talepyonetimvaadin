@@ -13,9 +13,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import com.example.base.entity.GlobalChatMessageEntity;
 import com.example.base.entity.NotificationEntity;
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.UserRepository;
+import com.example.base.service.GlobalChatBroadcaster;
+import com.example.base.service.GlobalChatService;
 import com.example.base.service.NotificationBroadcaster;
 import com.example.base.service.NotificationService;
 
@@ -23,16 +26,20 @@ import com.example.base.ui.AdminScreen.AdminDashboardView;
 import com.example.base.ui.AdminScreen.AdminSettingsView;
 import com.example.base.ui.AdminScreen.AdminUserManagmentView;
 import com.example.base.ui.AdminScreen.SystemLogsView;
+import com.example.base.ui.AdminScreen.AdminManagment.AdminManagmentView;
+import com.example.base.ui.Chat.GenelChatView;
 import com.example.base.ui.CustomerScreen.CustomerDashboardView;
-import com.example.base.ui.CustomerScreen.TalepAcma;
-import com.example.base.ui.CustomerScreen.TaleplerimView;
+import com.example.base.ui.CustomerScreen.FaqView;
+import com.example.base.ui.CustomerScreen.TalepAcmaView.TalepAcma;
+import com.example.base.ui.CustomerScreen.Taleplerim.TaleplerimView;
 import com.example.base.ui.HelpDeskerScreen.HelpdeskDashboardView;
 import com.example.base.ui.HelpDeskerScreen.MusteriOnayView;
 import com.example.base.ui.HelpDeskerScreen.OnIncelemeView;
 import com.example.base.ui.PoScreen.PODashboardView;
 import com.example.base.ui.PoScreen.TalepDegerlendirme;
+import com.example.base.ui.ProgrammerScreen.ProgrammerTaskView;
+import com.example.base.ui.PoScreen.KvkkApprovalView;
 import com.example.base.ui.ProgrammerScreen.ProgrammerDashboardView;
-import com.example.base.ui.AdminScreen.AdminManagmentView;
 
 import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
@@ -40,6 +47,8 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
+import com.vaadin.flow.component.badge.Badge;
+import com.vaadin.flow.component.badge.BadgeVariant;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
@@ -67,17 +76,27 @@ public class MainLayout extends AppLayout {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final NotificationBroadcaster broadcaster;
+    
+    private final GlobalChatService globalChatService;
+    private final GlobalChatBroadcaster globalChatBroadcaster;
 
     private Integer currentUserId;
     private MenuItem bellItem;
+    
+    private SideNavItem genelChatNavItem;
+    
     private Consumer<Void> broadcastListener;
+    private Consumer<GlobalChatMessageEntity> globalChatBroadcastListener;
 
     public MainLayout(AuthenticationContext authContext, UserRepository userRepository, 
-                      NotificationService notificationService, NotificationBroadcaster broadcaster) {
+                      NotificationService notificationService, NotificationBroadcaster broadcaster,
+                      GlobalChatService globalChatService, GlobalChatBroadcaster globalChatBroadcaster) {
         this.authContext = authContext;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.broadcaster = broadcaster;
+        this.globalChatService = globalChatService;
+        this.globalChatBroadcaster = globalChatBroadcaster;
         
         createHeader();
         createDrawer();
@@ -122,6 +141,7 @@ public class MainLayout extends AppLayout {
 
         MenuBar notificationMenu = new MenuBar();
         notificationMenu.addThemeVariants(MenuBarVariant.LUMO_TERTIARY);
+        
         bellItem = notificationMenu.addItem(VaadinIcon.BELL.create());
 
         Optional<UserEntity> userOpt = userRepository.findByEmail(email);
@@ -130,6 +150,7 @@ public class MainLayout extends AppLayout {
             currentUserId = user.getUserId();
             
             updateNotificationsUI();
+            updateGlobalChatBadge();
 
             Avatar avatar = new Avatar();
             avatar.setName(user.getNameSurname());
@@ -170,6 +191,21 @@ public class MainLayout extends AppLayout {
         addToNavbar(header);
     }
 
+    public void updateGlobalChatBadge() {
+        if (currentUserId == null || genelChatNavItem == null) return;
+        
+        int unreadCount = globalChatService.getUnreadCountForUser(currentUserId);
+        
+        if (unreadCount > 0) {
+            Badge badge = new Badge(String.valueOf(unreadCount));
+            badge.addThemeVariants(BadgeVariant.ERROR);
+            badge.getStyle().set("font-size", "10px");
+            genelChatNavItem.setSuffixComponent(badge);
+        } else {
+            genelChatNavItem.setSuffixComponent(null);
+        }
+    }
+
     private void updateNotificationsUI() {
         if (currentUserId == null) return;
         
@@ -199,20 +235,33 @@ public class MainLayout extends AppLayout {
                 text.getStyle()
                     .set("font-size", "13px")
                     .set("white-space", "normal")
-                    .set("flex-grow", "1");
+                    .set("flex-grow", "1")
+                    .set("cursor", "pointer");
+
+                text.addClickListener(e -> {
+                    String title = notif.getTitle();
+                    if (title != null) {
+                        if (title.contains("KVKK")) {
+                            UI.getCurrent().navigate(KvkkApprovalView.class);
+                        } else if (title.contains("Yeni Talep")) {
+                            UI.getCurrent().navigate(TalepDegerlendirme.class);
+                        }
+                    }
+                    notificationService.markAsRead(notif);
+                    updateNotificationsUI();
+                });
 
                 Button checkBtn = new Button(VaadinIcon.CHECK.create());
                 checkBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SUCCESS);
                 checkBtn.getElement().setProperty("title", getTranslation("notification.markAsRead"));
                 checkBtn.addClickListener(e -> {
                     notificationService.markAsRead(notif);
-                    
                     row.getStyle().set("transform", "translateX(100%)");
                     row.getStyle().set("opacity", "0");
                     row.setVisible(false);
-                    
                     updateNotificationsUI(); 
                 });
+                
                 HorizontalLayout buttons = new HorizontalLayout(checkBtn);
                 buttons.setSpacing(false);
                 buttons.getStyle().set("flex-shrink", "0");
@@ -238,47 +287,94 @@ public class MainLayout extends AppLayout {
                 ui.access(this::updateNotificationsUI);
             };
             broadcaster.register(currentUserId, broadcastListener);
+
+            globalChatBroadcastListener = (msg) -> {
+                ui.access(this::updateGlobalChatBadge);
+            };
+            globalChatBroadcaster.register(globalChatBroadcastListener);
         }
     }
 
     @Override
     protected void onDetach(DetachEvent detachEvent) {
-        if (currentUserId != null && broadcastListener != null) {
-            broadcaster.unregister(currentUserId, broadcastListener);
+        if (currentUserId != null) {
+            if (broadcastListener != null) broadcaster.unregister(currentUserId, broadcastListener);
+            if (globalChatBroadcastListener != null) globalChatBroadcaster.unregister(globalChatBroadcastListener);
         }
         super.onDetach(detachEvent);
     }
 
     private void createDrawer() {
-        SideNav nav = new SideNav();
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         
         if (auth != null) {
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
-                nav.addItem(new SideNavItem(getTranslation("menu.newRequest"), TalepAcma.class, VaadinIcon.PLUS_CIRCLE.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.myRequests"), TaleplerimView.class, VaadinIcon.LIST.create())); 
-                nav.addItem(new SideNavItem(getTranslation("menu.dashboard"), CustomerDashboardView.class, VaadinIcon.CHART_LINE.create()));
+            boolean isGod = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_GODPANEL"));
+
+            if (isGod || auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+                SideNav customerNav = new SideNav();
+                if (isGod) customerNav.setLabel("Customer");
+                customerNav.addItem(new SideNavItem(getTranslation("menu.newRequest"), TalepAcma.class, VaadinIcon.PLUS.create()));
+                customerNav.addItem(new SideNavItem(getTranslation("menu.myRequests"), TaleplerimView.class, VaadinIcon.LIST.create()));
+                customerNav.addItem(new SideNavItem(getTranslation("menu.dashboard"), CustomerDashboardView.class, VaadinIcon.CHART_LINE.create()));                
+                addToDrawer(customerNav);
             }
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PO"))) {
-                nav.addItem(new SideNavItem(getTranslation("menu.pendingRequests"), TalepDegerlendirme.class, VaadinIcon.LIST_SELECT.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.dashboard"), PODashboardView.class, VaadinIcon.CHART_LINE.create())); 
+
+            if (isGod || auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PROGRAMMER"))) {
+                SideNav programmerNav = new SideNav();
+                if (isGod) programmerNav.setLabel("Programmer");
+                programmerNav.addItem(new SideNavItem(getTranslation("menu.programmerTasks"), ProgrammerTaskView.class, VaadinIcon.CODE.create()));
+                programmerNav.addItem(new SideNavItem(getTranslation("menu.dashboard"), ProgrammerDashboardView.class, VaadinIcon.CHART_LINE.create()));
+                
+                genelChatNavItem = new SideNavItem("Genel Sohbet", GenelChatView.class);
+                genelChatNavItem.setPrefixComponent(VaadinIcon.COMMENTS.create());
+                programmerNav.addItem(genelChatNavItem);
+                
+                addToDrawer(programmerNav);
             }
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_HELPDESK"))) {
-                nav.addItem(new SideNavItem(getTranslation("menu.incomingRequests"), OnIncelemeView.class, VaadinIcon.INBOX.create())); 
-                nav.addItem(new SideNavItem(getTranslation("menu.customerApprovals"), MusteriOnayView.class, VaadinIcon.USER_CHECK.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.performanceReport"), HelpdeskDashboardView.class, VaadinIcon.CHART_LINE.create())); 
+
+            if (isGod || auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+                SideNav adminNav = new SideNav();
+                if (isGod) adminNav.setLabel("Admin");
+                adminNav.addItem(new SideNavItem(getTranslation("menu.userManagement"), AdminUserManagmentView.class, VaadinIcon.USERS.create())); 
+                adminNav.addItem(new SideNavItem(getTranslation("menu.systemLogs"), SystemLogsView.class, VaadinIcon.CHART_LINE.create()));
+                adminNav.addItem(new SideNavItem(getTranslation("menu.dashboard"), AdminDashboardView.class, VaadinIcon.LIST_SELECT.create()));
+                adminNav.addItem(new SideNavItem(getTranslation("menu.systemManagement"), AdminManagmentView.class, VaadinIcon.LIST.create()));
+                adminNav.addItem(new SideNavItem(getTranslation("menu.systemSettings"), AdminSettingsView.class, VaadinIcon.COG.create()));
+                
+                genelChatNavItem = new SideNavItem("Genel Sohbet", GenelChatView.class);
+                genelChatNavItem.setPrefixComponent(VaadinIcon.COMMENTS.create());
+                adminNav.addItem(genelChatNavItem);
+                
+                addToDrawer(adminNav);
             }
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
-                nav.addItem(new SideNavItem(getTranslation("menu.userManagement"), AdminUserManagmentView.class, VaadinIcon.USERS.create())); 
-                nav.addItem(new SideNavItem(getTranslation("menu.systemLogs"), SystemLogsView.class, VaadinIcon.CHART_LINE.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.dashboard"), AdminDashboardView.class, VaadinIcon.LIST_SELECT.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.systemManagement"), AdminManagmentView.class, VaadinIcon.LIST.create()));
-                nav.addItem(new SideNavItem(getTranslation("menu.systemSettings"), AdminSettingsView.class, VaadinIcon.COG.create()));
+
+            if (isGod || auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_HELPDESK"))) {
+                SideNav helpdeskNav = new SideNav();
+                if (isGod) helpdeskNav.setLabel("Helpdesk");
+                helpdeskNav.addItem(new SideNavItem(getTranslation("menu.incomingRequests"), OnIncelemeView.class, VaadinIcon.INBOX.create())); 
+                helpdeskNav.addItem(new SideNavItem(getTranslation("menu.customerApprovals"), MusteriOnayView.class, VaadinIcon.USER_CHECK.create()));
+                helpdeskNav.addItem(new SideNavItem(getTranslation("menu.performanceReport"), HelpdeskDashboardView.class, VaadinIcon.CHART_LINE.create())); 
+                
+                genelChatNavItem = new SideNavItem("Genel Sohbet", GenelChatView.class);
+                genelChatNavItem.setPrefixComponent(VaadinIcon.COMMENTS.create());
+                helpdeskNav.addItem(genelChatNavItem);
+                
+                addToDrawer(helpdeskNav);
             }
-            if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PROGRAMMER"))) {
-                nav.addItem(new SideNavItem(getTranslation("menu.programmerTasks"), ProgrammerDashboardView.class, VaadinIcon.CODE.create()));
+
+            if (isGod || auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PO"))) {
+                SideNav poNav = new SideNav();
+                if (isGod) poNav.setLabel("PO");
+                poNav.addItem(new SideNavItem(getTranslation("menu.pendingRequests"), TalepDegerlendirme.class, VaadinIcon.LIST_SELECT.create()));
+                poNav.addItem(new SideNavItem(getTranslation("menu.dashboard"), PODashboardView.class, VaadinIcon.CHART_LINE.create()));
+                poNav.addItem(new SideNavItem(getTranslation("menu.kvkkRequests"), KvkkApprovalView.class, VaadinIcon.NOTEBOOK.create()));
+                
+                genelChatNavItem = new SideNavItem("Genel Sohbet", GenelChatView.class);
+                genelChatNavItem.setPrefixComponent(VaadinIcon.COMMENTS.create());
+                poNav.addItem(genelChatNavItem);
+                
+                addToDrawer(poNav);
             }
         }
-        addToDrawer(nav);
     }
 }

@@ -39,6 +39,12 @@ public class WorkflowEntity {
     @Column(name = "assigned_at")
     private LocalDateTime assignedAt = LocalDateTime.now();
 
+    @Column(name = "actual_effort_hours")
+    private Integer actualEffortHours;
+
+    @Column(name = "pr_link", length = 500)
+    private String prLink;
+
     public WorkflowEntity() {
     }
 
@@ -89,5 +95,19 @@ public class WorkflowEntity {
 
     public void setAssignedAt(LocalDateTime assignedAt) {
         this.assignedAt = assignedAt;
+    }
+
+    public Integer getActualEffortHours() { 
+        return actualEffortHours; 
+    }
+    public void setActualEffortHours(Integer actualEffortHours) { 
+        this.actualEffortHours = actualEffortHours; 
+    }
+
+    public String getPrLink() { 
+        return prLink; 
+    }
+    public void setPrLink(String prLink) { 
+        this.prLink = prLink; 
     }
 }

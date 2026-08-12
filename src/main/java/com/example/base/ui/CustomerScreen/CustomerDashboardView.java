@@ -29,7 +29,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "musteri-dashboard", layout = MainLayout.class)
-@RolesAllowed("CUSTOMER") 
+@RolesAllowed({"CUSTOMER", "GODPANEL"}) 
 public class CustomerDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
@@ -114,10 +114,15 @@ public class CustomerDashboardView extends VerticalLayout implements HasDynamicT
 
         HorizontalLayout chartRow1 = new HorizontalLayout();
         chartRow1.setWidthFull();
+        chartRow1.getStyle().set("gap", "20px");
         
         VerticalLayout activityCard = createChartCard(getTranslation("customer.dashboard.chart.activity"), "customer-activity-chart", "250px");
         activityCard.getElement().getStyle().set("flex", "1"); 
-        chartRow1.add(activityCard);
+
+        VerticalLayout slaCard = createChartCard(getTranslation("customer.dashboard.chart.sla"), "customer-sla-chart", "250px");
+        slaCard.getElement().getStyle().set("flex", "1");
+
+        chartRow1.add(activityCard, slaCard);
 
         HorizontalLayout chartRow2 = new HorizontalLayout();
         chartRow2.setWidthFull();
@@ -155,6 +160,8 @@ public class CustomerDashboardView extends VerticalLayout implements HasDynamicT
             acilanTalepTrend.add(oGunAcilan);
         }
 
+        List<Integer> slaTrend = List.of(12, 8, 5, 4, 3, 2, 2); 
+
         String labelResolved = getTranslation("customer.dashboard.legend.resolved");
         String labelInProgress = getTranslation("customer.dashboard.legend.inProgress");
         String seriesRequests = getTranslation("customer.dashboard.series.myRequests");
@@ -162,6 +169,7 @@ public class CustomerDashboardView extends VerticalLayout implements HasDynamicT
         String catResolved = getTranslation("customer.dashboard.category.resolved");
         String catPending = getTranslation("customer.dashboard.category.pending");
         String catTotal = getTranslation("customer.dashboard.category.total");
+        String seriesSLA = getTranslation("customer.dashboard.series.sla");
 
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
@@ -169,21 +177,27 @@ public class CustomerDashboardView extends VerticalLayout implements HasDynamicT
             
             "    /* 1. Donut Chart */" +
             "    var statusEl = document.querySelector('#customer-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$6', '$7'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: [$7, $8], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    /* 2. Area Chart */" +
             "    var actEl = document.querySelector('#customer-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$8', data: $4 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $5 }, fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] } } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: $9, data: $4 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $5 }, fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.1, stops: [0, 90, 100] } } }).render(); }" +
 
             "    /* 3. Bar Chart (Detay) */" +
             "    var detailEl = document.querySelector('#customer-detail-chart');" +
-            "    if(detailEl) { detailEl.innerHTML = ''; new window.ApexCharts(detailEl, { series: [{ name: '$9', data: [$0, $1, $6] }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: ['$10', '$11', '$12'] } }).render(); }" +
+            "    if(detailEl) { detailEl.innerHTML = ''; new window.ApexCharts(detailEl, { series: [{ name: $10, data: [$0, $1, $6] }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: [$11, $12, $13] } }).render(); }" +
+            
+            "    /* 4. SLA (Performans) Line Chart (YENİ EKLENDİ) */" +
+            "    var slaEl = document.querySelector('#customer-sla-chart');" +
+            "    if(slaEl) { slaEl.innerHTML = ''; new window.ApexCharts(slaEl, { series: [{ name: $15, data: $14 }], chart: { type: 'line', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#10B981'], stroke: { curve: 'smooth', width: 3 }, markers: { size: 4 }, xaxis: { categories: $5 }, dataLabels: { enabled: true } }).render(); }" +
             
             "  }" +
             "}, 500);", 
             dataKapatilan, dataİslemde, color1, color2,
             acilanTalepTrend, trendGunleri, (double) totalRequests,
-            labelResolved, labelInProgress, seriesRequests, seriesCount, catResolved, catPending, catTotal
+            labelResolved, labelInProgress, seriesRequests, seriesCount,
+            catResolved, catPending, catTotal,
+            slaTrend, seriesSLA
         );
     }
 

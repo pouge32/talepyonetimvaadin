@@ -1,5 +1,7 @@
-package com.example.base.ui.Class;
+package com.example.base.ui.Chat;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.format.DateTimeFormatter;
 
 import org.springframework.security.core.Authentication;
@@ -18,6 +20,9 @@ import com.vaadin.flow.component.AttachEvent;
 import com.vaadin.flow.component.DetachEvent;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Paragraph;
@@ -25,20 +30,25 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
+import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.component.upload.Upload;
+import com.vaadin.flow.component.upload.receivers.FileBuffer;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.OptionalParameter;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "talep-chat", layout = MainLayout.class)
-@RolesAllowed({"CUSTOMER", "HELPDESK", "PO", "ADMIN"})
+@RolesAllowed({"CUSTOMER", "HELPDESK", "PO", "ADMIN", "GODPANEL"})
+@CssImport("./styles/chat/talep-chat.css")
 public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer>, HasDynamicTitle {
 
     private final ChatService chatService;
@@ -49,6 +59,8 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
     private final VerticalLayout messageArea = new VerticalLayout();
     private final TextField input = new TextField();
     private final Button sendButton = new Button();
+    private final Upload fileUpload; 
+    private final FileBuffer fileBuffer = new FileBuffer();
 
     private Integer requestId;
     private RequestEntity currentRequest; 
@@ -71,20 +83,58 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         add(headerTitle);
 
         messageArea.setSizeFull();
-        messageArea.getStyle()
-                .set("overflow-y", "auto")
-                .set("border-radius", "8px")
-                .set("padding", "12px");
+        messageArea.addClassName("talep-chat-message-area");
 
         input.setPlaceholder(getTranslation("chat.inputPlaceholder"));
         input.setWidthFull();
         input.addKeyDownListener(com.vaadin.flow.component.Key.ENTER, e -> sendMessage());
 
         sendButton.setText(getTranslation("chat.sendButton"));
+        sendButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         sendButton.addClickListener(e -> sendMessage());
 
-        HorizontalLayout inputBar = new HorizontalLayout(input, sendButton);
+        fileUpload = new Upload(fileBuffer);
+        Button uploadButton = new Button(VaadinIcon.PAPERCLIP.create());
+        uploadButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+        fileUpload.setUploadButton(uploadButton);
+        fileUpload.setDropAllowed(true);
+
+        Span dropText = new Span("chat.upload.text");
+        dropText.addClassName("talep-chat-drop-text");
+        fileUpload.setDropLabel(dropText);
+
+        Icon dropIcon = VaadinIcon.UPLOAD.create();
+        dropIcon.setColor("white");
+        fileUpload.setDropLabelIcon(dropIcon);
+
+        fileUpload.setAcceptedFileTypes("image/jpeg", "image/png", "application/pdf", ".doc", ".docx", ".txt", ".zip", ".rar");
+        
+        fileUpload.addSucceededListener(event -> {
+            if (otherPartyId == null) {
+                Notification.show(getTranslation("chat.error.otherPartyNotFound"), 3000, Notification.Position.MIDDLE);
+                return;
+            }
+            
+            try {
+                String fileName = event.getFileName();
+                InputStream inputStream = fileBuffer.getInputStream();
+                byte[] fileBytes = inputStream.readAllBytes();
+                
+                chatService.sendFileMessage(requestId, currentUser.getUserId(), otherPartyId, fileName, fileBytes);
+                
+                systemLogService.log("Kullanıcı (" + currentUser.getEmail() + ") ID: " + requestId + " olan talep sohbetine dosya yükledi: " + fileName);
+                
+                fileUpload.clearFileList();
+                
+            } catch (Exception ex) {
+                Notification.show("Dosya işlenirken hata oluştu: " + ex.getMessage(), 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+
+        HorizontalLayout inputBar = new HorizontalLayout(fileUpload, input, sendButton);
         inputBar.setWidthFull();
+        inputBar.setAlignItems(FlexComponent.Alignment.CENTER);
         inputBar.setFlexGrow(1, input);
 
         add(messageArea, inputBar);
@@ -177,22 +227,35 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         boolean isMine = message.getSender().getUserId().equals(currentUser.getUserId());
 
         Div bubble = new Div();
-        bubble.getStyle()
-                .set("max-width", "70%")
-                .set("margin-bottom", "8px")
-                .set("padding", "8px 12px")
-                .set("border-radius", "10px")
-                .set("align-self", isMine ? "flex-end" : "flex-start")
-                .set("background", isMine ? "var(--lumo-primary-color-50pct)" : "var(--lumo-contrast-10pct)");
+        bubble.addClassName("talep-chat-bubble");
+        if (isMine) {
+            bubble.addClassName("talep-chat-bubble-mine");
+        } else {
+            bubble.addClassName("talep-chat-bubble-other");
+        }
 
         Span sender = new Span(message.getSender().getNameSurname());
-        sender.getStyle().set("font-weight", "bold").set("font-size", "0.8em").set("display", "block");
+        sender.addClassName("talep-chat-sender");
 
-        Paragraph content = new Paragraph(message.getMessageBody());
-        content.getStyle().set("margin", "4px 0");
+        Paragraph content = new Paragraph();
+        content.addClassName("talep-chat-content");
+
+        if (message.getFileName() != null && message.getFileData() != null) {
+            StreamResource res = new StreamResource(message.getFileName(), () -> new ByteArrayInputStream(message.getFileData()));
+            Anchor downloadLink = new Anchor(res, "");
+            Button downloadBtn = new Button(message.getFileName(), VaadinIcon.DOWNLOAD.create());
+            downloadBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_CONTRAST);
+            downloadBtn.addClassName("talep-chat-download-btn");
+            downloadLink.add(downloadBtn);
+            downloadLink.getElement().setAttribute("download", true);
+            
+            content.add(downloadLink);
+        } else {
+            content.setText(message.getMessageBody());
+        }
 
         Span time = new Span(message.getSentAt().format(TIME_FORMAT));
-        time.getStyle().set("font-size", "0.7em").set("color", "var(--lumo-secondary-text-color)");
+        time.addClassName("talep-chat-time");
 
         bubble.add(sender, content, time);
         messageArea.add(bubble);
@@ -206,15 +269,7 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         VerticalLayout card = new VerticalLayout();
         card.setSpacing(false);
         card.setPadding(true);
-        
-        card.getStyle()
-            .set("background-color", "#030304") 
-            .set("border-radius", "8px")
-            .set("padding", "12px")
-            .set("margin-bottom", "16px")
-            .set("width", "90%") 
-            .set("align-self", "center") 
-            .set("box-shadow", "0 2px 4px rgba(0,0,0,0.2)");
+        card.addClassName("talep-chat-detail-card");
 
         HorizontalLayout header = new HorizontalLayout();
         header.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -225,21 +280,14 @@ public class TalepChat extends VerticalLayout implements HasUrlParameter<Integer
         infoIcon.setSize("18px");
         
         Span title = new Span(getTranslation("chat.card.subject") + ": " + request.getTitle());
-        title.getStyle()
-            .set("color", "#E2E8F0")
-            .set("font-weight", "bold")
-            .set("font-size", "14px");
+        title.addClassName("talep-chat-detail-title");
         
         header.add(infoIcon, title);
 
-        Span content = new Span(request.getDescription());
-        content.getStyle()
-            .set("color", "#CBD5E1")
-            .set("font-size", "13px")
-            .set("margin-top", "8px")
-            .set("line-height", "1.5");
+        Span detailContent = new Span(request.getDescription());
+        detailContent.addClassName("talep-chat-detail-content");
 
-        card.add(header, content);
+        card.add(header, detailContent);
         return card;
     }
 

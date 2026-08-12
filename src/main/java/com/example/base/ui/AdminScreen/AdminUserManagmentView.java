@@ -1,5 +1,7 @@
 package com.example.base.ui.AdminScreen;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 import com.example.base.entity.Role;
 import com.example.base.entity.UserEntity;
 import com.example.base.repository.UserRepository;
@@ -8,56 +10,82 @@ import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
+import com.vaadin.flow.component.html.Paragraph;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
+import com.vaadin.flow.component.orderedlayout.FlexComponent;
+import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "admin/kullanicilar", layout = MainLayout.class)
-@RolesAllowed("ADMIN")
+@RolesAllowed({"ADMIN", "GODPANEL"})
+@CssImport("./styles/admin/admin-user-managment.css")
 public class AdminUserManagmentView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;
     private final SystemLogService systemLogService;
+    private final PasswordEncoder passwordEncoder;
     private final Grid<UserEntity> grid = new Grid<>(UserEntity.class, false);
 
     private final Dialog banDialog = new Dialog();
     private final TextArea banReasonField = new TextArea();
     private UserEntity targetUser;
 
-    public AdminUserManagmentView(UserRepository userRepository, SystemLogService systemLogService) {
+    private final Dialog userFormDialog = new Dialog();
+    private final TextField nameField = new TextField();
+    private final TextField emailField = new TextField();
+    private final PasswordField passwordField = new PasswordField();
+    private final ComboBox<Role> roleField = new ComboBox<>();
+    private UserEntity editingUser = null;
+
+    private final Dialog deleteDialog = new Dialog();
+    private UserEntity deletingUser = null;
+
+    public AdminUserManagmentView(UserRepository userRepository, SystemLogService systemLogService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.systemLogService = systemLogService;
+        this.passwordEncoder = passwordEncoder;
 
         setSizeFull();
         setPadding(true);
         setSpacing(false);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("admin-users-layout");
 
         H3 title = new H3(getTranslation("admin.users.headerTitle"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
+        title.addClassName("admin-users-title");
+
+        Button newUserBtn = new Button(getTranslation("admin.users.btn.newUser"), VaadinIcon.USER.create());
+        newUserBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+        newUserBtn.addClickListener(e -> openUserForm(null));
+
+        HorizontalLayout headerRow = new HorizontalLayout(title, newUserBtn);
+        headerRow.setWidthFull();
+        headerRow.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        headerRow.setAlignItems(FlexComponent.Alignment.CENTER);
 
         configureGrid();
         configureBanDialog();
+        configureUserFormDialog();
+        configureDeleteDialog();
 
-        VerticalLayout container = new VerticalLayout(title, grid);
+        VerticalLayout container = new VerticalLayout(headerRow, grid);
         container.setSizeFull();
-        container.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("box-shadow", "0 4px 20px rgba(0, 0, 0, 0.05)")
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "20px");
+        container.addClassName("admin-users-container");
 
         grid.setWidthFull();
-        grid.getStyle().set("flex-grow", "1").set("border-radius", "12px");
+        grid.addClassName("admin-users-grid");
 
         add(container);
         refreshGrid();
@@ -70,39 +98,27 @@ public class AdminUserManagmentView extends VerticalLayout implements HasDynamic
 
     private void configureGrid() {
         grid.addColumn(UserEntity::getUserId).setHeader(getTranslation("admin.users.grid.id")).setAutoWidth(true);
+        grid.addColumn(UserEntity::getNameSurname).setHeader(getTranslation("admin.users.field.name")).setAutoWidth(true);
         grid.addColumn(UserEntity::getEmail).setHeader(getTranslation("admin.users.grid.email")).setAutoWidth(true);
 
-        grid.addComponentColumn(user -> {
-            ComboBox<Role> roleBox = new ComboBox<>();
-            roleBox.setItems(Role.values());
-            
-            if (user.getRole() != null) {
-                roleBox.setValue(user.getRole());
-            }
-
-            roleBox.addValueChangeListener(event -> {
-                if (event.getValue() != null) {
-                    try {
-                        Role eskiRol = user.getRole();
-                        user.setRole(event.getValue());
-                        userRepository.save(user);
-                        
-                        systemLogService.log("Admin, " + user.getEmail() + " kullanıcısının rolünü " + eskiRol + " -> " + event.getValue() + " olarak güncelledi.");
-
-                        Notification.show(getTranslation("admin.users.notification.roleUpdated"), 3000, Notification.Position.TOP_CENTER)
-                                .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    } catch (Exception e) {
-                        Notification.show(getTranslation("admin.users.notification.errorPrefix") + e.getMessage(), 4000, Notification.Position.MIDDLE)
-                                .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                    }
-                }
-            });
-            return roleBox;
-        }).setHeader(getTranslation("admin.users.grid.role")).setAutoWidth(true);
+        grid.addColumn(user -> user.getRole() != null ? user.getRole().name() : "-")
+            .setHeader(getTranslation("admin.users.grid.role"))
+            .setAutoWidth(true);
 
         grid.addComponentColumn(user -> {
             boolean isBanned = user.isBanned();
             
+            Button editBtn = new Button(VaadinIcon.EDIT.create());
+            editBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_TERTIARY);
+            editBtn.addClickListener(e -> openUserForm(user));
+
+            Button deleteBtn = new Button(VaadinIcon.TRASH.create());
+            deleteBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_TERTIARY);
+            deleteBtn.addClickListener(e -> {
+                deletingUser = user;
+                deleteDialog.open();
+            });
+
             Button actionButton = new Button(isBanned ? getTranslation("admin.users.btn.activate") : getTranslation("admin.users.btn.ban"));
             if (isBanned) {
                 actionButton.addThemeVariants(ButtonVariant.LUMO_SUCCESS, ButtonVariant.LUMO_SMALL);
@@ -128,10 +144,127 @@ public class AdminUserManagmentView extends VerticalLayout implements HasDynamic
                 }
             });
 
-            return actionButton;
+            HorizontalLayout actions = new HorizontalLayout(editBtn, deleteBtn, actionButton);
+            actions.setAlignItems(FlexComponent.Alignment.CENTER);
+            return actions;
         }).setHeader(getTranslation("admin.users.grid.action")).setAutoWidth(true);
 
         grid.setWidthFull();
+    }
+
+    private void openUserForm(UserEntity user) {
+        editingUser = user;
+        if (user != null) {
+            userFormDialog.setHeaderTitle(getTranslation("admin.users.dialog.editTitle"));
+            nameField.setValue(user.getNameSurname() != null ? user.getNameSurname() : "");
+            emailField.setValue(user.getEmail() != null ? user.getEmail() : "");
+            passwordField.clear();
+            roleField.setValue(user.getRole());
+        } else {
+            userFormDialog.setHeaderTitle(getTranslation("admin.users.dialog.newTitle"));
+            nameField.clear();
+            emailField.clear();
+            passwordField.clear();
+            roleField.setValue(Role.CUSTOMER);
+        }
+        userFormDialog.open();
+    }
+
+    private void configureUserFormDialog() {
+        nameField.setLabel(getTranslation("admin.users.field.name"));
+        nameField.setWidthFull();
+
+        emailField.setLabel(getTranslation("admin.users.field.email"));
+        emailField.setWidthFull();
+
+        passwordField.setLabel(getTranslation("admin.users.field.password"));
+        passwordField.setWidthFull();
+
+        roleField.setLabel(getTranslation("admin.users.field.role"));
+        roleField.setItems(Role.values());
+        roleField.setWidthFull();
+
+        Button saveBtn = new Button(getTranslation("admin.users.btn.save"), event -> {
+            try {
+                String rawPassword = passwordField.getValue();
+                String encodedPassword = (rawPassword != null && !rawPassword.isEmpty()) 
+                    ? passwordEncoder.encode(rawPassword) 
+                    : passwordEncoder.encode("123456");
+
+                if (editingUser == null) {
+                    UserEntity newUser = new UserEntity();
+                    newUser.setNameSurname(nameField.getValue());
+                    newUser.setEmail(emailField.getValue());
+                    
+                    newUser.setPassword(encodedPassword);
+                    try {
+                        java.lang.reflect.Method setHashMethod = UserEntity.class.getMethod("setPasswordHash", String.class);
+                        setHashMethod.invoke(newUser, encodedPassword);
+                    } catch (Exception ignored) {}
+
+                    newUser.setRole(roleField.getValue() != null ? roleField.getValue() : Role.CUSTOMER);
+                    newUser.setStatus("APPROVED");
+                    userRepository.save(newUser);
+
+                    systemLogService.log("Admin yeni kullanıcı oluşturdu: " + newUser.getEmail());
+                } else {
+                    editingUser.setNameSurname(nameField.getValue());
+                    editingUser.setEmail(emailField.getValue());
+                    
+                    if (rawPassword != null && !rawPassword.isEmpty()) {
+                        editingUser.setPassword(encodedPassword);
+                        try {
+                            java.lang.reflect.Method setHashMethod = UserEntity.class.getMethod("setPasswordHash", String.class);
+                            setHashMethod.invoke(editingUser, encodedPassword);
+                        } catch (Exception ignored) {}
+                    }
+                    if (roleField.getValue() != null) {
+                        editingUser.setRole(roleField.getValue());
+                    }
+                    userRepository.save(editingUser);
+
+                    systemLogService.log("Admin, " + editingUser.getEmail() + " kullanıcısının bilgilerini güncelledi.");
+                }
+
+                Notification.show(getTranslation("admin.users.notification.saved"), 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                
+                userFormDialog.close();
+                refreshGrid();
+            } catch (Exception e) {
+                Notification.show(getTranslation("admin.users.notification.errorPrefix") + e.getMessage(), 4000, Notification.Position.MIDDLE)
+                        .addThemeVariants(NotificationVariant.LUMO_ERROR);
+            }
+        });
+        saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelBtn = new Button(getTranslation("admin.management.btn.cancel"), e -> userFormDialog.close());
+
+        userFormDialog.getFooter().add(saveBtn, cancelBtn);
+        userFormDialog.add(new VerticalLayout(nameField, emailField, passwordField, roleField));
+    }
+
+    private void configureDeleteDialog() {
+        deleteDialog.setHeaderTitle(getTranslation("admin.users.dialog.deleteTitle"));
+        deleteDialog.add(new Paragraph(getTranslation("admin.users.dialog.deleteText")));
+
+        Button confirmDeleteBtn = new Button(getTranslation("admin.users.btn.delete"), e -> {
+            if (deletingUser != null) {
+                userRepository.delete(deletingUser);
+                systemLogService.log("Admin, " + deletingUser.getEmail() + " kullanıcısını sildi.");
+                
+                Notification.show(getTranslation("admin.users.notification.deleted"), 3000, Notification.Position.TOP_CENTER)
+                        .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
+                
+                deleteDialog.close();
+                deletingUser = null;
+                refreshGrid();
+            }
+        });
+        confirmDeleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_PRIMARY);
+
+        Button cancelDeleteBtn = new Button(getTranslation("admin.management.btn.cancel"), e -> deleteDialog.close());
+        deleteDialog.getFooter().add(confirmDeleteBtn, cancelDeleteBtn);
     }
 
     private void configureBanDialog() {

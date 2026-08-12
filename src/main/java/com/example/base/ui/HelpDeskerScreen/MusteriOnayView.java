@@ -22,7 +22,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "musteri-onay", layout = MainLayout.class)
-@RolesAllowed("HELPDESK")
+@RolesAllowed({"HELPDESK", "GODPANEL"})
 public class MusteriOnayView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;

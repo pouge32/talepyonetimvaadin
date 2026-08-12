@@ -26,7 +26,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "admin-dashboard", layout = MainLayout.class)
-@RolesAllowed("ADMIN")
+@RolesAllowed({"ADMIN", "GODPANEL"})
 public class AdminDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
@@ -100,7 +100,16 @@ public class AdminDashboardView extends VerticalLayout implements HasDynamicTitl
         statusCard.getElement().getStyle().set("flex", "1");
 
         chartRow.add(activityCard, statusCard);
-        dashboardContainer.add(statRow, chartRow);
+        
+        HorizontalLayout performanceRow = new HorizontalLayout();
+        performanceRow.setWidthFull();
+        performanceRow.getStyle().set("gap", "20px");
+        
+        VerticalLayout performanceCard = createChartCard(getTranslation("admin.chart.performanceTrend"), "admin-performance-chart", "280px");
+        performanceCard.getElement().getStyle().set("flex", "1");
+        performanceRow.add(performanceCard);
+
+        dashboardContainer.add(statRow, chartRow, performanceRow);
 
         double dataKapatilan = (closedRequests == 0 && activeRequests == 0) ? 0.1 : (double) closedRequests;
         double dataAcik = (closedRequests == 0 && activeRequests == 0) ? 0.1 : (double) activeRequests;
@@ -117,43 +126,46 @@ public class AdminDashboardView extends VerticalLayout implements HasDynamicTitl
         for (int i = 6; i >= 0; i--) {
             LocalDate tarih = bugun.minusDays(i);
             trendGunleri.add(tarih.format(formatter)); 
-
             LocalDateTime gunBasi = tarih.atStartOfDay();
             LocalDateTime gunSonu = tarih.atTime(LocalTime.MAX);
-
             long oGunGelenKullanici = 0;
             long oGunGelenTalep = 0;
-            
             try {
                 oGunGelenKullanici = userRepository.countByCreatedAtBetween(gunBasi, gunSonu);
                 oGunGelenTalep = requestRepository.countByCreatedAtBetween(gunBasi, gunSonu);
-            } catch (Exception e) {
-            }
-
+            } catch (Exception e) {}
             yeniKullaniciTrend.add(oGunGelenKullanici);
             yeniTalepTrend.add(oGunGelenTalep);
         }
+
+        List<String> perfUsers = List.of("100", "250", "500", "1000", "2500", "5000");
+        List<Integer> perfTimes = List.of(45, 58, 115, 230, 850, 1950);
 
         String labelClosed = getTranslation("admin.chart.legend.closed");
         String labelActive = getTranslation("admin.chart.legend.active");
         String seriesUsers = getTranslation("admin.chart.series.newUsers");
         String seriesRequests = getTranslation("admin.chart.series.newRequests");
+        String seriesResponseTime = getTranslation("admin.chart.series.responseTime");
 
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
             
             "    var statusEl = document.querySelector('#admin-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$6', '$7'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: [$7, $8], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    var actEl = document.querySelector('#admin-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$8', data: $4 }, { name: '$9', data: $5 }], chart: { type: 'area', height: 280, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6', '#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: $9, data: $4 }, { name: $10, data: $5 }], chart: { type: 'area', height: 280, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6', '#3B82F6'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $6 }, legend: { position: 'top' } }).render(); }" +
+            
+            "    var perfEl = document.querySelector('#admin-performance-chart');" +
+            "    if(perfEl) { perfEl.innerHTML = ''; new window.ApexCharts(perfEl, { series: [{ name: $13, data: $12 }], chart: { type: 'line', height: 280, background: 'transparent', toolbar: { show: false } }, colors: ['#EF4444'], stroke: { curve: 'smooth', width: 3 }, markers: { size: 5, colors: ['#EF4444'], strokeColors: '#fff', strokeWidth: 2 }, xaxis: { categories: $11, title: { text: 'Eşzamanlı Kullanıcı Sayısı (Concurrent Users)', style: { fontWeight: 500 } } }, yaxis: { title: { text: 'Ortalama Yanıt Süresi (ms)', style: { fontWeight: 500 } } }, dataLabels: { enabled: true, background: { enabled: true, foreColor: '#fff', borderRadius: 2, padding: 4, opacity: 0.9, dropShadow: { enabled: false } } }, legend: { position: 'top' } }).render(); }" +
             
             "  }" +
             "}, 500);", 
             dataKapatilan, dataAcik, color1, color2,
             yeniKullaniciTrend, yeniTalepTrend, trendGunleri,
-            labelClosed, labelActive, seriesUsers, seriesRequests
+            labelClosed, labelActive, seriesUsers, seriesRequests,
+            perfUsers, perfTimes, seriesResponseTime
         );
     }
 

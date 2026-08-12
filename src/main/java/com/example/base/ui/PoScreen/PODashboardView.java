@@ -25,7 +25,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "po-dashboard", layout = MainLayout.class)
-@RolesAllowed("PO")
+@RolesAllowed({"PO", "GODPANEL"})
 public class PODashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
@@ -95,10 +95,15 @@ public class PODashboardView extends VerticalLayout implements HasDynamicTitle {
 
         HorizontalLayout chartRow1 = new HorizontalLayout();
         chartRow1.setWidthFull();
+        chartRow1.getStyle().set("gap", "20px");
         
         VerticalLayout activityCard = createChartCard(getTranslation("po.dashboard.chart.weeklyTrend"), "po-activity-chart", "250px");
-        activityCard.getElement().getStyle().set("flex", "1"); 
-        chartRow1.add(activityCard);
+        activityCard.getElement().getStyle().set("flex", "1.5"); 
+        
+        VerticalLayout leadTimeCard = createChartCard(getTranslation("po.dashboard.chart.leadTime"), "po-leadtime-chart", "250px");
+        leadTimeCard.getElement().getStyle().set("flex", "1");
+
+        chartRow1.add(activityCard, leadTimeCard);
 
         HorizontalLayout chartRow2 = new HorizontalLayout();
         chartRow2.setWidthFull();
@@ -158,11 +163,14 @@ public class PODashboardView extends VerticalLayout implements HasDynamicTitle {
             cozumTrend.add(oGunCozulen);
         }
 
+        List<Integer> leadTimeTrend = List.of(5, 4, 4, 3, 3, 2, 2); 
+
         String labelInReview = getTranslation("po.dashboard.legend.inReview");
         String labelResolved = getTranslation("po.dashboard.legend.resolved");
         String seriesAssignedToMe = getTranslation("po.dashboard.series.assignedToMe");
         String seriesMyResolutions = getTranslation("po.dashboard.series.myResolutions");
         String seriesPendingWork = getTranslation("po.dashboard.series.pendingWork");
+        String seriesLeadTime = getTranslation("po.dashboard.series.leadTime");
 
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
@@ -170,22 +178,27 @@ public class PODashboardView extends VerticalLayout implements HasDynamicTitle {
             
             "    /* Donut Chart */" +
             "    var statusEl = document.querySelector('#po-status-chart');" +
-            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: ['$4', '$5'], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(statusEl) { statusEl.innerHTML = ''; new window.ApexCharts(statusEl, { series: [$0, $1], labels: [$4, $5], chart: { type: 'donut', height: 250, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    /* Area Chart */" +
             "    var actEl = document.querySelector('#po-activity-chart');" +
-            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: '$6', data: $8 }, { name: '$7', data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
+            "    if(actEl) { actEl.innerHTML = ''; new window.ApexCharts(actEl, { series: [{ name: $6, data: $8 }, { name: $7, data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
             
+            "    /* YENİ: Lead Time (Çözüm Süresi) Line Chart */" +
+            "    var leadEl = document.querySelector('#po-leadtime-chart');" +
+            "    if(leadEl) { leadEl.innerHTML = ''; new window.ApexCharts(leadEl, { series: [{ name: $15, data: $14 }], chart: { type: 'line', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#8B5CF6'], stroke: { curve: 'smooth', width: 3 }, markers: { size: 4 }, xaxis: { categories: $10 }, yaxis: { title: { text: 'Gün' } }, dataLabels: { enabled: true } }).render(); }" +
+
             "    /* Bar Chart */" +
             "    var barEl = document.querySelector('#po-category-chart');" +
-            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: '$11', data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#EF4444'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
+            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: $11, data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#EF4444'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
 
             "  }" +
             "}, 500);", 
             dataBekleyen, dataTamamlanan, color1, color2,
             labelInReview, labelResolved, seriesAssignedToMe, seriesMyResolutions,
             gelenGorevTrend, cozumTrend, trendGunleri,
-            seriesPendingWork, barData, barCategories
+            seriesPendingWork, barData, barCategories,
+            leadTimeTrend, seriesLeadTime
         );
     }
 

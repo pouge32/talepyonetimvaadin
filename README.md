@@ -84,3 +84,34 @@ java -jar target/*.jar
 - [Components](https://vaadin.com/docs/latest/components) — 50+ UI components, all callable from Java
 - [Vaadin Copilot](https://vaadin.com/docs/latest/tools/copilot) — visual + AI editing in the browser
 - [Full documentation](https://vaadin.com/docs)
+
+# Talep Yönetim Sistemi - Önceliklendirme Modülü
+
+## Önceliklendirme Formülü
+
+Sistemimizde taleplerin (request) öncelik sırasını matematiksel olarak belirlemek için aşağıdaki algoritma kullanılmaktadır:
+
+> **Öncelik Puanı = ((İş Etkisi × 2) × Aciliyet) / Efor**
+
+---
+
+## Algoritmanın Gerekçesi ve Tasarım Kararları
+
+Bu formül, yazılım mühendisliğinde ve Çevik (Agile) proje yönetiminde kullanılan WSJF (Weighted Shortest Job First) ve Value/Effort (Değer/Efor) matrisi gibi endüstri standartlarına çok benzeyen, mantığı çok sağlam bir kurgudur. 
+
+Mentörlere veya paydaşlara sunarken formülün matematiği şu profesyonel argümanlarla savunulmaktadır:
+
+### 1. Neden İş Etkisini 2 ile Çarpıyoruz? (Ağırlıklandırma / Weighting)
+Bir talebin sadece "acil" olarak işaretlenmesi, şirkete büyük değer katacağı veya büyük bir zararı önleyeceği anlamına gelmez. Örneğin; bir kullanıcı sadece arayüzdeki bir renk kaymasını "Çok Acil" olarak işaretleyebilir. İş etkisini 2 ile çarparak (ağırlığını artırarak), şirketin ana işleyişini bozan veya büyük değer katan işlerin, sadece yüksek sesle istenen (acil) ama önemsiz işlerin önüne geçmesini garanti altına alıyoruz. Temel önceliğimiz her zaman iş değeridir.
+
+### 2. Neden Aciliyet ile Çarpıyoruz? (Zaman Hassasiyeti)
+İş etkisi ve aciliyet birbirini katlayan (çarpan) değişkenlerdir. Hem etkisi çok yüksek hem de zamanı çok daralan bir iş, sistemde üstel bir fırlama yapmalıdır. Bu çarpım işlemi, zamanı dolmak üzere olan (SLA ihlaline yaklaşan) kritik hataları listenin en tepesine otomatik olarak iter.
+
+### 3. Neden Efora Bölüyoruz? (Yatırım Getirisi - ROI & Hızlı Kazanımlar)
+Formülün mühendislik açısından en zekice kısmı burasıdır. Paydaya eforu koymak, takıma "Hızlı Kazanımlar" (Quick Wins) sağlar. 
+Düşün ki etki ve aciliyet puanı tamamen aynı olan A ve B adında iki talep var:
+
+* **A talebi:** 1 saat sürecek *(Düşük efor -> Payda küçük -> Öncelik Puanı **YÜKSEK**)*
+* **B talebi:** 5 gün sürecek *(Yüksek efor -> Payda büyük -> Öncelik Puanı **DÜŞÜK**)*
+
+Efora bölmek, az bir çalışma ile (1 saat) sisteme hemen kazandırılabilecek yüksek değerli işlerin aradan hızla çıkarılmasını sağlar.

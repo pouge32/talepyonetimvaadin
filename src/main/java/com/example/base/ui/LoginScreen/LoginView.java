@@ -3,6 +3,7 @@ package com.example.base.ui.LoginScreen;
 import java.util.List;
 import java.util.Locale;
 
+import com.example.base.service.SettingsService;
 import com.example.base.service.SystemLogService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
@@ -30,10 +31,30 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
 
     private final LoginForm login;
     private final SystemLogService systemLogService;
+    private final SettingsService settingsService;
 
-    public LoginView(SystemLogService systemLogService) {
+    public LoginView(SystemLogService systemLogService, SettingsService settingsService) {
         this.systemLogService = systemLogService;
+        this.settingsService = settingsService;
         
+        if (settingsService.isMaintenanceMode()) {
+            Div maintenanceBanner = new Div();
+            maintenanceBanner.setText("SİSTEM BAKIM MODUNDADIR - Sadece Yöneticiler Giriş Yapabilir");
+            maintenanceBanner.getStyle()
+                    .set("background-color", "var(--lumo-error-color)")
+                    .set("color", "white")
+                    .set("padding", "12px")
+                    .set("text-align", "center")
+                    .set("font-weight", "bold")
+                    .set("font-size", "16px")
+                    .set("width", "100%")
+                    .set("position", "absolute")
+                    .set("top", "0")
+                    .set("left", "0")
+                    .set("z-index", "1000");
+            add(maintenanceBanner);
+        }
+
         Locale sessionLocale = (Locale) VaadinSession.getCurrent().getAttribute("session_locale");
         if (sessionLocale != null) {
             UI.getCurrent().setLocale(sessionLocale);
@@ -93,7 +114,8 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
         langContainer.getStyle()
                 .set("position", "absolute")
                 .set("top", "20px")
-                .set("right", "20px");
+                .set("right", "20px")
+                .set("z-index", "10");
 
         VerticalLayout layout = new VerticalLayout();
         layout.setAlignItems(FlexComponent.Alignment.CENTER);

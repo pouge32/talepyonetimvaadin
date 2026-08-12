@@ -26,7 +26,7 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "destek-performans", layout = MainLayout.class)
-@RolesAllowed("HELPDESK")
+@RolesAllowed({"HELPDESK", "GODPANEL"})
 public class HelpdeskDashboardView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
@@ -102,7 +102,15 @@ public class HelpdeskDashboardView extends VerticalLayout implements HasDynamicT
         barCard.getElement().getStyle().set("flex", "1");
 
         ikinciSatir.add(areaCard, barCard);
-        dashboardContainer.add(birinciSatir, ikinciSatir);
+        
+        HorizontalLayout ucuncuSatir = new HorizontalLayout();
+        ucuncuSatir.setWidthFull();
+        
+        VerticalLayout frtCard = createChartCard(getTranslation("helpdesk.dashboard.chart.frt"), "frt-chart-div", "250px");
+        frtCard.getElement().getStyle().set("flex", "1");
+        ucuncuSatir.add(frtCard);
+
+        dashboardContainer.add(birinciSatir, ikinciSatir, ucuncuSatir);
 
         List<String> barCategories = new ArrayList<>();
         List<Long> barData = new ArrayList<>();
@@ -114,7 +122,7 @@ public class HelpdeskDashboardView extends VerticalLayout implements HasDynamicT
             }
         } catch (Exception e) {
             barCategories.addAll(List.of(getTranslation("helpdesk.dashboard.noData")));
-            barData.addAll(List.of(0L));
+            barData.add(0L);
         }
 
         List<String> trendGunleri = new ArrayList<>();
@@ -143,29 +151,38 @@ public class HelpdeskDashboardView extends VerticalLayout implements HasDynamicT
         String color1 = (closedCount == 0 && forwardedCount == 0) ? "#E2E8F0" : successColor;
         String color2 = (closedCount == 0 && forwardedCount == 0) ? "#E2E8F0" : primaryColor;
 
+        List<Integer> frtTrend = List.of(45, 38, 30, 25, 22, 18, 15);
+
         String labelClosed = getTranslation("helpdesk.dashboard.legend.closed");
         String labelForwarded = getTranslation("helpdesk.dashboard.legend.forwarded");
         String seriesIncoming = getTranslation("helpdesk.dashboard.series.incoming");
         String seriesResolved = getTranslation("helpdesk.dashboard.series.resolved");
         String seriesRequestCount = getTranslation("helpdesk.dashboard.series.requestCount");
+        String seriesFrt = getTranslation("helpdesk.dashboard.series.frt");
 
         UI.getCurrent().getPage().executeJs(
             "setTimeout(function() {" +
             "  if (window.ApexCharts) {" +
+            
             "    var donutEl = document.querySelector('#gercek-apex-grafik');" +
-            "    if(donutEl) { donutEl.innerHTML = ''; new window.ApexCharts(donutEl, { series: [$0, $1], labels: ['$4', '$5'], chart: { type: 'donut', height: 200, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
+            "    if(donutEl) { donutEl.innerHTML = ''; new window.ApexCharts(donutEl, { series: [$0, $1], labels: [$4, $5], chart: { type: 'donut', height: 200, background: 'transparent', toolbar: { show: false } }, colors: [$2, $3], legend: { position: 'bottom' }, dataLabels: { enabled: false } }).render(); }" +
 
             "    var areaEl = document.querySelector('#area-chart-div');" +
-            "    if(areaEl) { areaEl.innerHTML = ''; new window.ApexCharts(areaEl, { series: [{ name: '$6', data: $8 }, { name: '$7', data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
+            "    if(areaEl) { areaEl.innerHTML = ''; new window.ApexCharts(areaEl, { series: [{ name: $6, data: $8 }, { name: $7, data: $9 }], chart: { type: 'area', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F59E0B', '#10B981'], dataLabels: { enabled: false }, stroke: { curve: 'smooth', width: 2 }, xaxis: { categories: $10 }, legend: { position: 'top' } }).render(); }" +
 
             "    var barEl = document.querySelector('#bar-chart-div');" +
-            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: '$11', data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
+            "    if(barEl) { barEl.innerHTML = ''; new window.ApexCharts(barEl, { series: [{ name: $11, data: $12 }], chart: { type: 'bar', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#3B82F6'], plotOptions: { bar: { borderRadius: 4, horizontal: true } }, dataLabels: { enabled: false }, xaxis: { categories: $13 } }).render(); }" +
+            
+            "    var frtEl = document.querySelector('#frt-chart-div');" +
+            "    if(frtEl) { frtEl.innerHTML = ''; new window.ApexCharts(frtEl, { series: [{ name: $15, data: $14 }], chart: { type: 'line', height: 250, background: 'transparent', toolbar: { show: false } }, colors: ['#F43F5E'], stroke: { curve: 'smooth', width: 3 }, markers: { size: 4 }, xaxis: { categories: $10 }, dataLabels: { enabled: true } }).render(); }" +
+            
             "  }" +
             "}, 500);", 
             donutClosed, donutForwarded, color1, color2,
             labelClosed, labelForwarded, seriesIncoming, seriesResolved,
             gelenTrend, cozulenTrend, trendGunleri,
-            seriesRequestCount, barData, barCategories
+            seriesRequestCount, barData, barCategories,
+            frtTrend, seriesFrt
         );
     }
 

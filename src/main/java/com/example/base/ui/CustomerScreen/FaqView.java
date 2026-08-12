@@ -6,6 +6,7 @@ import com.example.base.service.FaqService;
 import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.accordion.Accordion;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
@@ -19,7 +20,8 @@ import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "bilgi-bankasi", layout = MainLayout.class)
-@RolesAllowed("CUSTOMER")
+@RolesAllowed({"CUSTOMER", "GODPANEL"})
+@CssImport("./styles/customer/faq-view.css")
 public class FaqView extends VerticalLayout implements HasDynamicTitle {
 
     private final FaqService faqService;
@@ -33,22 +35,16 @@ public class FaqView extends VerticalLayout implements HasDynamicTitle {
         setPadding(true);
         setSpacing(true);
         setAlignItems(Alignment.CENTER);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("faq-view-layout");
 
         Div container = new Div();
-        container.setWidthFull();
-        container.setMaxWidth("900px");
-        container.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("padding", "30px")
-                .set("border-radius", "12px")
-                .set("box-shadow", "0 4px 15px rgba(0, 0, 0, 0.05)");
+        container.addClassName("faq-container");
 
         H2 header = new H2(getTranslation("faq.headerTitle"));
-        header.getStyle().set("margin-top", "0").set("text-align", "center");
+        header.addClassName("faq-header");
 
         Paragraph subtext = new Paragraph(getTranslation("faq.headerSubtitle"));
-        subtext.getStyle().set("text-align", "center").set("color", "var(--lumo-secondary-text-color)");
+        subtext.addClassName("faq-subtitle");
 
         searchField.setPlaceholder(getTranslation("faq.searchPlaceholder"));
         searchField.setWidthFull();
@@ -57,8 +53,7 @@ public class FaqView extends VerticalLayout implements HasDynamicTitle {
         searchField.setValueChangeMode(ValueChangeMode.EAGER);
         searchField.addValueChangeListener(e -> refreshFaq(e.getValue()));
 
-        faqAccordion.setWidthFull();
-        faqAccordion.getStyle().set("margin-top", "20px");
+        faqAccordion.addClassName("faq-accordion-container");
         refreshFaq("");
 
         container.add(header, subtext, searchField, faqAccordion);

@@ -1,0 +1,74 @@
+/* --- TALEP CHAT STYLES --- */
+
+.talep-chat-message-area {
+    overflow-y: auto;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.talep-chat-drop-text {
+    color: black;
+}
+
+/* --- MESSAGE BUBBLE STYLES --- */
+
+.talep-chat-bubble {
+    max-width: 70%;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+}
+
+.talep-chat-bubble-mine {
+    align-self: flex-end;
+    background: var(--lumo-primary-color-50pct);
+}
+
+.talep-chat-bubble-other {
+    align-self: flex-start;
+    background: var(--lumo-contrast-10pct);
+}
+
+.talep-chat-sender {
+    font-weight: bold;
+    font-size: 0.8em;
+    display: block;
+}
+
+.talep-chat-content {
+    margin: 4px 0;
+}
+
+.talep-chat-download-btn {
+    cursor: pointer;
+}
+
+.talep-chat-time {
+    font-size: 0.7em;
+    color: var(--lumo-secondary-text-color);
+}
+
+/* --- REQUEST DETAIL CARD STYLES --- */
+
+.talep-chat-detail-card {
+    background-color: #030304;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    width: 90%;
+    align-self: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.talep-chat-detail-title {
+    color: #E2E8F0;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.talep-chat-detail-content {
+    color: #CBD5E1;
+    font-size: 13px;
+    margin-top: 8px;
+    line-height: 1.5;
+}

@@ -1,5 +1,6 @@
 package com.example.base.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -15,9 +16,15 @@ import jakarta.persistence.EntityNotFoundException;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final SystemLogService systemLogService;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, 
+                       NotificationService notificationService, 
+                       SystemLogService systemLogService) {
         this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.systemLogService = systemLogService;
     }
 
     @Transactional
@@ -67,5 +74,54 @@ public class UserService {
     private UserEntity getUserOrThrow(Integer userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Kullanıcı bulunamadı: " + userId));
+    }
+
+    @Transactional
+    public void requestAccountDeletion(Integer userId) {
+        UserEntity user = getUserOrThrow(userId);
+        
+        user.setDeletionRequested(true);
+        user.setDeletionRequestDate(LocalDateTime.now());
+        userRepository.save(user);
+
+        systemLogService.log("KVKK İHLAL/SİLME TALEBİ: Müşteri (" + user.getEmail() + ") 6698 sayılı kanun kapsamında hesabının silinmesini talep etti.");
+
+        notificationService.notifyRole("PO", 
+            "KVKK Veri Silme Talebi", 
+            user.getNameSurname() + " isimli kullanıcı hesap verilerinin silinmesini talep ediyor. Onay bekliyor.");
+    }
+
+    @Transactional
+    public void approveKvkkDeletion(Integer userId) {
+        UserEntity user = getUserOrThrow(userId);
+        
+        user.setNameSurname("Anonim Kullanıcı (" + user.getUserId() + ")");
+        user.setEmail("deleted_" + user.getUserId() + "@anonymized.local");
+        user.setPasswordHash("DELETED_ACCOUNT");
+        user.setProfilePhotoUrl(null);
+        
+        user.setDeletionRequested(false); 
+        user.setBanned(true);
+        
+        userRepository.save(user);
+
+        systemLogService.log("KVKK ONAY: Yöneticiler " + userId + " ID'li kullanıcının verilerini anonimleştirerek sistemi yasalara uygun hale getirdi.");
+    }
+
+    @Transactional
+    public void rejectKvkkDeletion(Integer userId) {
+        UserEntity user = getUserOrThrow(userId);
+        
+        user.setDeletionRequested(false);
+        user.setDeletionRequestDate(null);
+        userRepository.save(user);
+
+        systemLogService.log("KVKK RED: " + user.getEmail() + " adlı kullanıcının hesap silme talebi reddedildi.");
+    }
+
+    public List<UserEntity> getPendingDeletionRequests() {
+        return userRepository.findAll().stream()
+                .filter(user -> Boolean.TRUE.equals(user.getDeletionRequested()))
+                .toList();
     }
 }

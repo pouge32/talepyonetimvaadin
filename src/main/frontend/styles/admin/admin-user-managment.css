@@ -1,0 +1,23 @@
+/* --- ADMIN USER MANAGEMENT VIEW STYLES --- */
+
+.admin-users-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.admin-users-title {
+    margin-top: 0;
+    color: var(--lumo-header-text-color);
+}
+
+.admin-users-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 20px;
+}
+
+.admin-users-grid {
+    flex-grow: 1;
+    border-radius: 12px;
+}

@@ -1,0 +1,28 @@
+
+.faq-view-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.faq-container {
+    background-color: var(--lumo-base-color);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    max-width: 900px;
+    width: 100%;
+}
+
+.faq-header {
+    margin-top: 0;
+    text-align: center;
+}
+
+.faq-subtitle {
+    text-align: center;
+    color: var(--lumo-secondary-text-color);
+}
+
+.faq-accordion-container {
+    margin-top: 20px;
+    width: 100%;
+}

@@ -1,0 +1,103 @@
+/* --- ADMIN MANAGEMENT VIEW STYLES --- */
+
+.admin-view-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.admin-main-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 20px;
+    max-width: 100%;
+    box-sizing: border-box;
+    height: calc(100vh - 100px);
+    display: flex;
+    overflow: hidden;
+    flex-direction: column;
+}
+
+.admin-grid {
+    flex-grow: 1;
+    border-radius: 12px;
+}
+
+.admin-bulk-action-bar {
+    background-color: var(--lumo-primary-color-10pct);
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+.admin-selected-count-label {
+    font-weight: bold;
+    color: var(--lumo-primary-text-color);
+    margin-right: auto;
+}
+
+.admin-header {
+    flex-shrink: 0;
+    margin-bottom: 16px;
+}
+
+.admin-title-row {
+    padding-right: 40px;
+}
+
+.admin-title {
+    margin: 0 0 4px 0;
+    color: var(--lumo-header-text-color);
+}
+
+.admin-subtitle {
+    margin: 0;
+    color: var(--lumo-secondary-text-color);
+}
+
+.admin-priority-badge {
+    min-width: 85px;
+    display: inline-flex;
+    justify-content: center;
+}
+
+.admin-detail-title {
+    font-weight: bold;
+}
+
+.admin-effort-badge {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.admin-chat-container {
+    position: relative;
+    display: inline-block;
+}
+
+.admin-chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    padding: 2px 5px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+.admin-history-step {
+    border-left: 3px solid var(--lumo-primary-color);
+    padding-left: 15px;
+    margin-bottom: 15px;
+}
+
+.admin-history-date {
+    font-size: 0.85em;
+    color: var(--lumo-secondary-text-color);
+    display: block;
+    font-weight: bold;
+}
+
+.admin-history-action {
+    display: block;
+    margin-top: 4px;
+}

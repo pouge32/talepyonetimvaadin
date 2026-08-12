@@ -1,0 +1,93 @@
+
+.genel-chat-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.genel-chat-main-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 24px;
+    box-sizing: border-box;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.genel-chat-heading {
+    margin: 0 0 4px 0;
+    color: var(--lumo-header-text-color);
+}
+
+.genel-chat-subtitle {
+    margin: 0 0 16px 0;
+    color: var(--lumo-secondary-text-color);
+    font-size: var(--lumo-font-size-s);
+}
+
+.genel-chat-scroller {
+    flex-grow: 1;
+    border: 1px solid var(--lumo-contrast-10pct);
+    border-radius: 8px;
+}
+
+.genel-chat-upload {
+    display: inline-flex;
+}
+
+.genel-chat-file-indicator {
+    font-size: 11px;
+    color: var(--lumo-success-text-color);
+    margin-left: 5px;
+}
+
+.genel-chat-input-layout {
+    margin-top: 15px;
+}
+
+/* --- MESSAGE BUBBLE STYLES --- */
+
+.genel-chat-message-bubble {
+    margin-bottom: 10px;
+}
+
+.genel-chat-sender-name {
+    font-weight: 600;
+    color: var(--lumo-contrast-90pct);
+    cursor: pointer;
+    text-decoration: underline dotted transparent;
+    transition: 0.2s;
+}
+
+.genel-chat-role-badge {
+    margin-left: 5px;
+    font-size: 10px;
+}
+
+.genel-chat-date {
+    color: var(--lumo-secondary-text-color);
+    font-size: 0.85em;
+    margin-left: 8px;
+}
+
+.genel-chat-whisper-label {
+    color: var(--lumo-error-text-color);
+    font-size: 0.85em;
+    font-style: italic;
+    margin-left: 8px;
+}
+
+.genel-chat-message-text {
+    color: var(--lumo-contrast-80pct);
+    margin-top: 2px;
+    line-height: 1.4;
+}
+
+.genel-chat-download-link {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 13px;
+}

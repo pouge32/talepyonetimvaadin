@@ -3,13 +3,6 @@ app-shell-imports.js
 css.generated.d.ts
 flow\Flow.tsx
 flow\ReactAdapter.tsx
-flow\chunks\chunk-0c85fb4308fe9e6f8d67b0551c917ffcef393ad25096afd3fdaaefb3753c8b5d.js
-flow\chunks\chunk-0e25e2b6086009c4513d8c5a09a1dcc4617fdcc4a0734dec82f53aad23e604b2.js
-flow\chunks\chunk-5466afa876d421751ffaa63538481804eff4d62b0032217690be141f80b66ae0.js
-flow\chunks\chunk-61abcb89d943c7bc56df5cd74b9bbeff37517ad59fdfbc9277f70170c8544c6b.js
-flow\chunks\chunk-647ad132e4cbb5163f6bd9ea05fee640d2a8ddfb8f80bb4903724fdf60c42d33.js
-flow\chunks\chunk-df41d00f1822ad50071656d955bdbbda1d856775778a2155bdd849fb2da7a1ea.js
-flow\chunks\chunk-f8739890c28d1a0f60a07ff9fefa50011e27a1905cb9aaf4461216d10142449c.js
 flow\generated-flow-imports.d.ts
 flow\generated-flow-imports.js
 flow\generated-flow-webcomponent-imports.js
@@ -140,3 +133,4 @@ routes.tsx
 vaadin-featureflags.js
 vaadin-react.tsx
 vaadin.ts
+vite-devmode.ts

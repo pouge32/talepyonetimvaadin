@@ -1,0 +1,50 @@
+/* --- ADMIN SETTINGS VIEW STYLES --- */
+
+.admin-settings-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.admin-settings-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 30px;
+    max-width: 1000px;
+    margin: 0 auto;
+    min-height: 600px;
+}
+
+.admin-settings-header-title {
+    margin-top: 0;
+}
+
+.admin-settings-header-desc {
+    color: var(--lumo-secondary-text-color);
+    margin-bottom: 20px;
+}
+
+.admin-settings-tabs {
+    margin-bottom: 20px;
+}
+
+.admin-settings-panel-title {
+    margin-top: 0;
+}
+
+.admin-settings-panel-info {
+    color: var(--lumo-secondary-text-color);
+}
+
+.admin-settings-panel-info-spaced {
+    color: var(--lumo-secondary-text-color);
+    margin-bottom: 20px;
+}
+
+.admin-settings-add-row {
+    margin-bottom: 20px;
+}
+
+.admin-settings-save-btn {
+    margin-top: 20px;
+}
