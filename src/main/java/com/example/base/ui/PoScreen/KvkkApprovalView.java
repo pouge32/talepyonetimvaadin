@@ -8,6 +8,7 @@ import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.confirmdialog.ConfirmDialog;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Span;
@@ -24,6 +25,7 @@ import jakarta.annotation.security.RolesAllowed;
 @Route(value = "kvkk-talepleri", layout = MainLayout.class)
 @RolesAllowed({"PO", "ADMIN", "GODPANEL"})
 @PageTitle("KVKK Silme Talepleri | Monad")
+@CssImport("./styles/po/kvkk-approval.css")
 public class KvkkApprovalView extends VerticalLayout {
 
     private final UserService userService;
@@ -37,8 +39,9 @@ public class KvkkApprovalView extends VerticalLayout {
         setSpacing(true);
 
         H2 header = new H2("KVKK Veri Silme Talepleri");
+        
         Span subtitle = new Span("Hesabının anonimleştirilmesini talep eden müşteriler.");
-        subtitle.getStyle().set("color", "var(--lumo-secondary-text-color)");
+        subtitle.addClassName("kvkk-subtitle");
 
         configureGrid();
         refreshGrid();

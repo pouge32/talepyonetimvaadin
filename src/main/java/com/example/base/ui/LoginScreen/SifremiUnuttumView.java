@@ -10,6 +10,7 @@ import com.example.base.repository.UserRepository;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Image;
@@ -26,6 +27,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @Route("sifremi-unuttum")
 @AnonymousAllowed 
+@CssImport("./styles/login/sifremi-unuttum.css")
 public class SifremiUnuttumView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;
@@ -38,28 +40,19 @@ public class SifremiUnuttumView extends VerticalLayout implements HasDynamicTitl
         setSizeFull();
         setAlignItems(FlexComponent.Alignment.CENTER);
         setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        getStyle().set("background-color", "var(--lumo-base-color)"); 
+        addClassName("sifremi-unuttum-layout"); 
 
         Image logo = new Image("images/logo2.png", "Monad Logo");
         logo.setMaxWidth("150px");
 
         Div card = new Div();
-        card.getStyle()
-            .set("background-color", "var(--lumo-contrast-5pct)")
-            .set("padding", "40px")
-            .set("border-radius", "12px")
-            .set("box-shadow", "0 4px 15px rgba(0, 0, 0, 0.2)")
-            .set("width", "100%")
-            .set("max-width", "400px")
-            .set("display", "flex")
-            .set("flex-direction", "column")
-            .set("align-items", "center");
+        card.addClassName("sifremi-unuttum-card");
 
         H2 title = new H2(getTranslation("forgotPassword.title"));
-        title.getStyle().set("margin-top", "0");
+        title.addClassName("sifremi-unuttum-title");
 
         Paragraph description = new Paragraph(getTranslation("forgotPassword.description"));
-        description.getStyle().set("text-align", "center").set("color", "var(--lumo-secondary-text-color)");
+        description.addClassName("sifremi-unuttum-description");
 
         EmailField emailField = new EmailField(getTranslation("forgotPassword.email"));
         emailField.setWidthFull();
@@ -70,11 +63,11 @@ public class SifremiUnuttumView extends VerticalLayout implements HasDynamicTitl
         Button submitButton = new Button(getTranslation("forgotPassword.submit"));
         submitButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         submitButton.setWidthFull();
-        submitButton.getStyle().set("margin-top", "20px");
+        submitButton.addClassName("sifremi-unuttum-submit-btn");
 
         Button backToLoginBtn = new Button(getTranslation("forgotPassword.backToLogin"), VaadinIcon.ARROW_LEFT.create());
         backToLoginBtn.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-        backToLoginBtn.getStyle().set("margin-top", "10px");
+        backToLoginBtn.addClassName("sifremi-unuttum-back-btn");
         backToLoginBtn.addClickListener(e -> UI.getCurrent().navigate("login")); 
 
         submitButton.addClickListener(e -> {

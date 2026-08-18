@@ -1,0 +1,17 @@
+
+.access-denied-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.access-denied-title {
+    color: var(--lumo-error-text-color);
+}
+
+.access-denied-home-btn {
+    margin-top: 20px;
+}
+
+.access-denied-error-msg {
+    font-size: 0.9em;
+    color: gray;
+}

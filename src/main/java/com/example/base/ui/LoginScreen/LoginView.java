@@ -9,6 +9,7 @@ import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Image;
 import com.vaadin.flow.component.html.Main;
@@ -27,6 +28,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @Route(value = "login", autoLayout = false)
 @AnonymousAllowed
+@CssImport("./styles/login/login-screen.css")
 public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTitle {
 
     private final LoginForm login;
@@ -40,18 +42,7 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
         if (settingsService.isMaintenanceMode()) {
             Div maintenanceBanner = new Div();
             maintenanceBanner.setText("SİSTEM BAKIM MODUNDADIR - Sadece Yöneticiler Giriş Yapabilir");
-            maintenanceBanner.getStyle()
-                    .set("background-color", "var(--lumo-error-color)")
-                    .set("color", "white")
-                    .set("padding", "12px")
-                    .set("text-align", "center")
-                    .set("font-weight", "bold")
-                    .set("font-size", "16px")
-                    .set("width", "100%")
-                    .set("position", "absolute")
-                    .set("top", "0")
-                    .set("left", "0")
-                    .set("z-index", "1000");
+            maintenanceBanner.addClassName("login-maintenance-banner");
             add(maintenanceBanner);
         }
 
@@ -85,7 +76,7 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
 
         Image logo = new Image("images/logo.png", "Logo");
         logo.setHeight("200px");
-        logo.getStyle().set("margin-bottom", "10px");
+        logo.addClassName("login-logo");
 
         Button registerButton = new Button(getTranslation("login.registerButton"));
         registerButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
@@ -111,11 +102,7 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
         });
 
         Div langContainer = new Div(languageSelect);
-        langContainer.getStyle()
-                .set("position", "absolute")
-                .set("top", "20px")
-                .set("right", "20px")
-                .set("z-index", "10");
+        langContainer.addClassName("login-lang-container");
 
         VerticalLayout layout = new VerticalLayout();
         layout.setAlignItems(FlexComponent.Alignment.CENTER);
@@ -126,7 +113,7 @@ public class LoginView extends Main implements BeforeEnterObserver, HasDynamicTi
 
         add(langContainer, layout);
         setSizeFull();
-        getStyle().set("position", "relative");
+        addClassName("login-view-layout");
     }
 
     @Override

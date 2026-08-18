@@ -1,0 +1,108 @@
+
+.programmer-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.programmer-main-container {
+    background-color: var(--lumo-base-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--lumo-contrast-10pct);
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.programmer-header {
+    flex-shrink: 0;
+}
+
+.programmer-heading {
+    margin: 0 0 4px 0;
+    color: var(--lumo-header-text-color);
+}
+
+.programmer-subtitle {
+    margin: 0;
+    color: var(--lumo-secondary-text-color);
+}
+
+.programmer-grid {
+    flex-grow: 1;
+    border-radius: 12px;
+    margin-top: 16px;
+}
+
+/* İlerleme Çubuğu ve Loglar */
+.programmer-progress-empty {
+    color: var(--lumo-disabled-text-color);
+}
+
+.programmer-progress-label {
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.programmer-date-layout {
+    gap: 2px;
+}
+
+.programmer-sla-badge {
+    min-width: 90px;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.programmer-priority-badge {
+    min-width: 70px;
+    display: inline-flex;
+    justify-content: center;
+}
+
+/* Alt Görevler (Checklist) */
+.programmer-checkbox-completed {
+    text-decoration: line-through;
+    color: var(--lumo-disabled-text-color);
+}
+
+/* Detay Paneli */
+.programmer-reject-area {
+    color: var(--lumo-error-text-color);
+}
+
+.programmer-detail-title {
+    font-weight: bold;
+}
+
+.programmer-section-title {
+    font-weight: bold;
+    color: var(--lumo-secondary-text-color);
+}
+
+.programmer-detail-badge {
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+/* Talep Geçmişi Stilleri */
+.programmer-history-step {
+    border-left: 3px solid var(--lumo-primary-color);
+    padding-left: 15px;
+    margin-bottom: 10px;
+}
+
+.programmer-history-date {
+    font-size: 0.80em;
+    color: var(--lumo-secondary-text-color);
+    display: block;
+}
+
+.programmer-history-action {
+    display: block;
+    font-size: 0.9em;
+}

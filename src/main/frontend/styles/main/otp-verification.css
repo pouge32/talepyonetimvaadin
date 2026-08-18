@@ -1,0 +1,9 @@
+
+.otp-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.otp-description {
+    text-align: center;
+    color: var(--lumo-secondary-text-color);
+}

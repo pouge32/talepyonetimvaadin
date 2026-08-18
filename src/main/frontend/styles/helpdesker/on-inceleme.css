@@ -1,0 +1,73 @@
+/* --- ÖN İNCELEME VIEW STYLES --- */
+
+.on-inceleme-title {
+    margin: 0;
+}
+
+.on-inceleme-tabs {
+    flex-shrink: 0;
+}
+
+.on-inceleme-chat-container {
+    position: relative;
+    display: inline-block;
+}
+
+.on-inceleme-chat-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* --- DİALOG VE BİLEŞEN STİLLERİ --- */
+
+.on-inceleme-history-title {
+    font-weight: bold;
+    color: var(--lumo-secondary-text-color);
+}
+
+.on-inceleme-history-step {
+    border-left: 3px solid var(--lumo-primary-color);
+    padding-left: 15px;
+    margin-bottom: 15px;
+}
+
+.on-inceleme-history-date {
+    font-size: 0.85em;
+    color: var(--lumo-secondary-text-color);
+    display: block;
+    font-weight: bold;
+}
+
+.on-inceleme-history-action {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.9em;
+}
+
+.on-inceleme-point-badge {
+    font-weight: bold;
+}
+
+.on-inceleme-point-badge-help {
+    cursor: help;
+}
+
+.on-inceleme-status-badge {
+    min-width: 80px;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.on-inceleme-screenshot-image {
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.on-inceleme-date-layout {
+    gap: 4px;
+}

@@ -1,0 +1,33 @@
+
+.sifremi-unuttum-layout {
+    background-color: var(--lumo-base-color);
+}
+
+.sifremi-unuttum-card {
+    background-color: var(--lumo-contrast-5pct);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sifremi-unuttum-title {
+    margin-top: 0;
+}
+
+.sifremi-unuttum-description {
+    text-align: center;
+    color: var(--lumo-secondary-text-color);
+}
+
+.sifremi-unuttum-submit-btn {
+    margin-top: 20px;
+}
+
+.sifremi-unuttum-back-btn {
+    margin-top: 10px;
+}

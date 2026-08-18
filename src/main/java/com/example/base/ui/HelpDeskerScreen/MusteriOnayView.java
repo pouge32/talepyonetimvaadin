@@ -9,6 +9,7 @@ import com.example.base.service.SystemLogService;
 import com.example.base.ui.MainScreen.MainLayout;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -23,6 +24,7 @@ import jakarta.annotation.security.RolesAllowed;
 
 @Route(value = "musteri-onay", layout = MainLayout.class)
 @RolesAllowed({"HELPDESK", "GODPANEL"})
+@CssImport("./styles/helpdesker/musteri-onay.css")
 public class MusteriOnayView extends VerticalLayout implements HasDynamicTitle {
 
     private final UserRepository userRepository;
@@ -36,13 +38,14 @@ public class MusteriOnayView extends VerticalLayout implements HasDynamicTitle {
         setSizeFull();
         setPadding(true);
         setSpacing(true);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("helpdesk-musteri-onay-layout");
 
         H3 title = new H3(getTranslation("helpdesk.approval.headerTitle"));
-        title.getStyle().set("margin-top", "0").set("color", "var(--lumo-header-text-color)");
+        title.addClassName("helpdesk-musteri-onay-title");
         
         configureGrid();
         grid.setWidthFull();
+        grid.addClassName("helpdesk-musteri-onay-grid");
 
         add(title, grid);
         refreshGrid();

@@ -11,6 +11,20 @@ import $cssFromFile_6 from 'Frontend/styles/chat/talep-chat.css?inline';
 import $cssFromFile_7 from 'Frontend/styles/customer/faq-view.css?inline';
 import $cssFromFile_8 from 'Frontend/styles/customer/talep-acma.css?inline';
 import $cssFromFile_9 from 'Frontend/styles/customer/taleplerim.css?inline';
+import $cssFromFile_10 from 'Frontend/styles/helpdesker/musteri-onay.css?inline';
+import $cssFromFile_11 from 'Frontend/styles/helpdesker/on-inceleme.css?inline';
+import $cssFromFile_12 from 'Frontend/styles/login/kayit-ol.css?inline';
+import $cssFromFile_13 from 'Frontend/styles/login/login-screen.css?inline';
+import $cssFromFile_14 from 'Frontend/styles/login/sifremi-unuttum.css?inline';
+import $cssFromFile_15 from 'Frontend/styles/main/access-denied.css?inline';
+import $cssFromFile_16 from 'Frontend/styles/main/bakim.css?inline';
+import $cssFromFile_17 from 'Frontend/styles/main/home.css?inline';
+import $cssFromFile_18 from 'Frontend/styles/main/main-layout.css?inline';
+import $cssFromFile_19 from 'Frontend/styles/main/otp-verification.css?inline';
+import $cssFromFile_20 from 'Frontend/styles/main/profil.css?inline';
+import $cssFromFile_21 from 'Frontend/styles/po/kvkk-approval.css?inline';
+import $cssFromFile_22 from 'Frontend/styles/po/talep-degerlendirme.css?inline';
+import $cssFromFile_23 from 'Frontend/styles/programmer/programmer-task.css?inline';
 import '@vaadin/vertical-layout/src/vaadin-vertical-layout.js';
 import '@vaadin/horizontal-layout/src/vaadin-horizontal-layout.js';
 import '@vaadin/grid/src/vaadin-grid.js';
@@ -142,6 +156,34 @@ injectGlobalCss($cssFromFile_7.toString(), 'CSSImport end', document);
 injectGlobalCss($cssFromFile_8.toString(), 'CSSImport end', document);
 
 injectGlobalCss($cssFromFile_9.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_10.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_11.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_12.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_13.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_14.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_15.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_16.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_17.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_18.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_19.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_20.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_21.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_22.toString(), 'CSSImport end', document);
+
+injectGlobalCss($cssFromFile_23.toString(), 'CSSImport end', document);
 const loadOnDemand = (key) => { return Promise.resolve(0); }
 window.Vaadin = window.Vaadin || {};
 window.Vaadin.Flow = window.Vaadin.Flow || {};

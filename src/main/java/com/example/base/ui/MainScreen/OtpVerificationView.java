@@ -8,6 +8,7 @@ import com.example.base.service.OtpService;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
@@ -22,17 +23,19 @@ import jakarta.annotation.security.PermitAll;
 
 @Route("2fa-dogrulama")
 @PermitAll
+@CssImport("./styles/main/otp-verification.css")
 public class OtpVerificationView extends VerticalLayout implements HasDynamicTitle {
 
     public OtpVerificationView(OtpService otpService, UserRepository userRepository) {
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("otp-layout");
 
         H2 title = new H2(getTranslation("otp.title"));
+        
         Paragraph desc = new Paragraph(getTranslation("otp.description"));
-        desc.getStyle().set("text-align", "center").set("color", "var(--lumo-secondary-text-color)");
+        desc.addClassName("otp-description");
 
         TextField otpField = new TextField(getTranslation("otp.fieldLabel"));
         otpField.setPlaceholder(getTranslation("otp.placeholder"));

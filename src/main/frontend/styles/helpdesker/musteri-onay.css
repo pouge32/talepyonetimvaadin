@@ -1,0 +1,13 @@
+
+.helpdesk-musteri-onay-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.helpdesk-musteri-onay-title {
+    margin-top: 0;
+    color: var(--lumo-header-text-color);
+}
+
+.helpdesk-musteri-onay-grid {
+    flex-grow: 1;
+}

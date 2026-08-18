@@ -8,6 +8,7 @@ import com.example.base.repository.UserRepository;
 import com.example.base.service.SystemLogService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -22,6 +23,7 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @Route("kayit-ol")
 @AnonymousAllowed  
+@CssImport("./styles/login/kayit-ol.css")
 public class KayitOlView extends VerticalLayout {
 
     private final UserRepository userRepository;
@@ -36,8 +38,10 @@ public class KayitOlView extends VerticalLayout {
         setSizeFull();
         setAlignItems(FlexComponent.Alignment.CENTER);
         setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
+        addClassName("kayit-ol-layout");
 
         H2 title = new H2(getTranslation("register.title"));
+        title.addClassName("kayit-ol-title");
 
         TextField nameField = new TextField(getTranslation("register.name"));
         nameField.setWidthFull();
@@ -53,6 +57,7 @@ public class KayitOlView extends VerticalLayout {
         submitButton.setWidthFull();
         
         RouterLink loginLink = new RouterLink(getTranslation("register.loginLink"), LoginView.class); 
+        loginLink.addClassName("kayit-ol-login-link");
 
         submitButton.addClickListener(e -> {
             if (nameField.isEmpty() || emailField.isEmpty() || passwordField.isEmpty()) {
@@ -88,12 +93,12 @@ public class KayitOlView extends VerticalLayout {
             passwordField.clear();
         });
 
-        VerticalLayout formContainer = new VerticalLayout(nameField, emailField, passwordField, submitButton);
+        VerticalLayout formContainer = new VerticalLayout(title, nameField, emailField, passwordField, submitButton, loginLink);
         formContainer.setPadding(false);
-        formContainer.setMaxWidth("400px");
-        formContainer.setWidthFull();
+        formContainer.setSpacing(true);
+        formContainer.addClassName("kayit-ol-form-container");
         formContainer.setAlignItems(FlexComponent.Alignment.STRETCH);
 
-        add(title, formContainer, loginLink);
+        add(formContainer);
     }
 }

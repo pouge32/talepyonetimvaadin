@@ -3,6 +3,7 @@ package com.example.base.ui.MainScreen;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -14,26 +15,27 @@ import com.vaadin.flow.server.auth.AnonymousAllowed;
 
 @Route("bakim")
 @AnonymousAllowed
+@CssImport("./styles/main/bakim.css")
 public class BakimView extends VerticalLayout implements HasDynamicTitle {
     
     public BakimView() {
         setSizeFull();
         setAlignItems(FlexComponent.Alignment.CENTER);
         setJustifyContentMode(FlexComponent.JustifyContentMode.CENTER);
-        getStyle().set("background-color", "var(--lumo-base-color)");
         setSpacing(true);
+        addClassName("bakim-layout");
         
         H1 title = new H1("🛠️ Sistem Bakımda");
-        title.getStyle().set("color", "var(--lumo-error-color)").set("margin-bottom", "0");
+        title.addClassName("bakim-title");
         
         Paragraph text = new Paragraph("Sistemimizde şu anda planlı bir bakım çalışması yapılmaktadır. Lütfen daha sonra tekrar deneyiniz.");
-        text.getStyle().set("color", "var(--lumo-secondary-text-color)").set("margin-top", "0");
+        text.addClassName("bakim-text");
 
         Button homeButton = new Button("Giriş Ekranına Dön", VaadinIcon.HOME.create(), e -> {
             UI.getCurrent().navigate("login");
         });
         homeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        homeButton.getStyle().set("margin-top", "20px");
+        homeButton.addClassName("bakim-home-btn");
 
         add(title, text, homeButton);
     }

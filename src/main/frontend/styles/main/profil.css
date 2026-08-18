@@ -1,0 +1,23 @@
+
+.profil-layout {
+    background-color: var(--lumo-contrast-5pct);
+}
+
+.profil-subtitle {
+    color: var(--lumo-secondary-text-color);
+}
+
+.profil-avatar {
+    margin-right: 20px;
+}
+
+.profil-photo-label {
+    font-weight: bold;
+    font-size: var(--lumo-font-size-s);
+}
+
+.profil-action-buttons {
+    margin-top: 20px;
+    width: 100%;
+    max-width: 500px;
+}

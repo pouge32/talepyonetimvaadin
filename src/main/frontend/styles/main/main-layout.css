@@ -1,0 +1,50 @@
+
+.main-layout-title {
+    font-size: var(--lumo-font-size-l);
+    margin: 0;
+}
+
+.main-layout-brand {
+    cursor: pointer;
+}
+
+.main-layout-lang-selector {
+    margin-left: auto;
+    margin-right: 15px;
+}
+
+.main-layout-header {
+    padding-right: 15px;
+}
+
+.main-layout-chat-badge {
+    font-size: 10px;
+}
+
+
+.main-layout-notif-badge {
+    margin-left: 5px;
+    font-size: 10px;
+}
+
+.main-layout-notif-row {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--lumo-contrast-10pct);
+    transition: all 0.3s ease;
+}
+
+.main-layout-notif-row.hidden-row {
+    transform: translateX(100%);
+    opacity: 0;
+}
+
+.main-layout-notif-text {
+    font-size: 13px;
+    white-space: normal;
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.main-layout-notif-buttons {
+    flex-shrink: 0;
+}

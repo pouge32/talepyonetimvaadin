@@ -14,11 +14,12 @@ import com.example.base.repository.RequestRepository;
 import com.example.base.repository.UserRepository;
 import com.example.base.ui.AdminScreen.AdminUserManagmentView;
 import com.example.base.ui.CustomerScreen.Taleplerim.TaleplerimView;
-import com.example.base.ui.PoScreen.TalepDegerlendirme;
+import com.example.base.ui.PoScreen.TalepDegerlendirme.TalepDegerlendirmeView;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.badge.Badge;
 import com.vaadin.flow.component.badge.BadgeVariant;
+import com.vaadin.flow.component.dependency.CssImport;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H2;
@@ -38,6 +39,7 @@ import jakarta.annotation.security.PermitAll;
 
 @Route(value = "", layout = MainLayout.class) 
 @PermitAll 
+@CssImport("./styles/main/home.css")
 public class HomeView extends VerticalLayout implements HasDynamicTitle {
 
     private final RequestRepository requestRepository;
@@ -64,24 +66,17 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
         setSizeFull();
         setPadding(true);
         setSpacing(false);
-        getStyle().set("background-color", "var(--lumo-contrast-5pct)");
+        addClassName("home-layout");
 
         Div mainContainer = new Div();
         mainContainer.setWidthFull();
-        mainContainer.getStyle()
-                .set("background-color", "var(--lumo-base-color)")
-                .set("border-radius", "16px")
-                .set("box-shadow", "0 4px 20px rgba(0, 0, 0, 0.05)")
-                .set("border", "1px solid var(--lumo-contrast-10pct)")
-                .set("padding", "40px")
-                .set("max-width", "1000px")
-                .set("margin", "0 auto")
-                .set("min-height", "600px");
+        mainContainer.addClassName("home-main-container");
 
         H2 title = new H2(getTranslation("home.welcomeTitle"));
-        title.getStyle().set("margin-top", "0").set("text-align", "center");
+        title.addClassName("home-title");
+
         Paragraph subtitle = new Paragraph(getTranslation("home.welcomeSubtitle"));
-        subtitle.getStyle().set("color", "var(--lumo-secondary-text-color)").set("text-align", "center").set("margin-bottom", "30px");
+        subtitle.addClassName("home-subtitle");
 
         HorizontalLayout searchBarLayout = new HorizontalLayout();
         searchBarLayout.setWidthFull();
@@ -109,15 +104,11 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
         requestSection.setVisible(false);
         userSection.setVisible(false);
 
-        noResultMsg.getStyle().set("color", "var(--lumo-error-text-color)")
-                   .set("font-weight", "bold")
-                   .set("display", "block")
-                   .set("text-align", "center")
-                   .set("padding", "20px");
+        noResultMsg.addClassName("home-no-result-msg");
         noResultMsg.setVisible(false);
 
         resultsContainer.setWidthFull();
-        resultsContainer.getStyle().set("margin-top", "30px");
+        resultsContainer.addClassName("home-results-container");
         resultsContainer.add(noResultMsg, requestSection, userSection);
 
         mainContainer.add(title, subtitle, searchBarLayout, resultsContainer);
@@ -154,7 +145,7 @@ public class HomeView extends VerticalLayout implements HasDynamicTitle {
                 if (isCustomer) {
                     UI.getCurrent().navigate(TaleplerimView.class);
                 } else {
-                    UI.getCurrent().navigate(TalepDegerlendirme.class);
+                    UI.getCurrent().navigate(TalepDegerlendirmeView.class);
                 }
             }
         });
